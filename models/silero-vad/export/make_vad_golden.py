@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Writes vad_golden.json: Silero VAD's speech probability per 512-sample chunk of the test signal
+"""Writes vad_golden.json, uploaded to Hugging Face as anira-project/silero-vad test/vad_golden.json
+(the golden of test/test_Vad.cpp): Silero VAD's speech probability per 512-sample chunk of the test signal
 (VadSignal.h, written the same way here), from ONNX Runtime with the state fed back.
 
     python make_vad_golden.py <silero-vad repository>/onnx/silero_vad_16k.onnx

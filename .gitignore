@@ -5,3 +5,21 @@ CMakeUserPresets.json
 __pycache__/
 .venv/
 plans/
+
+# No weights, model files or test data in git: they live on Hugging Face.
+*.onnx
+*.ort
+*.tflite
+*.pt
+*.pte
+*.ts
+*.jit
+*.mlpackage/
+*.mlmodel
+*.mlmodelc/
+*.safetensors
+*.bin
+*.npz
+*.npy
+*.wav
+*_golden.json

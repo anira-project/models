@@ -131,8 +131,8 @@ uv run --group rave python test_tflite.py
 ```
 
 Running only the parity tests (not regenerating) needs neither the RAVE
-clone nor `make_golden.py` — the committed `golden/golden.npz` and the models
-(from Hugging Face, into `models/`) suffice for `test_onnxruntime.py` / `test_executorch.py` / `test_tflite.py`.
+clone nor `make_golden.py` — `golden/golden.npz` and the models (both from
+Hugging Face, anira-project/rave-djembe, into `golden/` and `models/`) suffice for `test_onnxruntime.py` / `test_executorch.py` / `test_tflite.py`.
 
 ## The other formats
 

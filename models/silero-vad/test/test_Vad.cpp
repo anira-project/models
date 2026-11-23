@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Silero VAD's wrapper: the clock and the aligned output exact to the sample, the probabilities
-// those of ONNX Runtime on the same audio (data/vad_golden.json), the same values at 48 kHz as at
+// those of ONNX Runtime on the same audio (test/vad_golden.json on Hugging Face), the same values at 48 kHz as at
 // 16 kHz, the offline run the same segments as streaming. The tests with the model need its
-// weights: ANIRA_MODELS_TEST_WEIGHTS/silero-vad (a checkout of the HF repository); without them
-// they skip. They run non-real-time (set_non_realtime), so every value is the model's and none a
+// weights: ANIRA_MODELS_TEST_WEIGHTS/silero-vad (a checkout of the HF repository at the catalog's
+// revision, which also holds the golden); without them they skip. They run non-real-time (set_non_realtime), so every value is the model's and none a
 // miss.
 
 #include <anira/abi/enums.h>
@@ -53,8 +53,8 @@ std::optional<core::ModelSource> silero_weights() {
 }
 
 std::vector<float> golden() {
-    std::ifstream file(std::filesystem::path(ANIRA_MODELS_SOURCE_DIR) /
-                       "silero-vad/test/data/vad_golden.json");
+    std::ifstream file(std::filesystem::path(std::getenv("ANIRA_MODELS_TEST_WEIGHTS")) /
+                       "silero-vad/test/vad_golden.json");
     const auto json = nlohmann::json::parse(file);
     return json.at("probabilities").get<std::vector<float>>();
 }

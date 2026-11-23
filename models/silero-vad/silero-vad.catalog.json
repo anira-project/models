@@ -1,6 +1,6 @@
 {
   "repo": "anira-project/silero-vad",
-  "revision": "1bc559aed9e5eb942755788b04fd8f31514ad301",
+  "revision": "4ec2ce075d7b6fc353e26a052e89040a270df74f",
   "license": "MIT",
   "files": [
     {"path": "LICENSE", "size": 1075, "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"},
