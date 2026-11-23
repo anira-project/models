@@ -19,7 +19,9 @@ endif()
 # Options. The inference engines are anira's (ANIRA_WITH_*): this repo never sets them.
 # ------------------------------------------------------------------------------
 option(ANIRA_MODELS_WITH_HANDTRACKING "Build anira::models::handtracking" ${PROJECT_IS_TOP_LEVEL})
-option(ANIRA_MODELS_WITH_STT "Build anira::models::stt (speech to text)" ${PROJECT_IS_TOP_LEVEL})
+option(ANIRA_MODELS_WITH_SILERO_VAD "Build anira::models::silero_vad" ${PROJECT_IS_TOP_LEVEL})
+option(ANIRA_MODELS_WITH_PARAKEET_TDT "Build anira::models::parakeet_tdt" ${PROJECT_IS_TOP_LEVEL})
+option(ANIRA_MODELS_WITH_NEMOTRON_DIARIZATION "Build anira::models::nemotron_diarization" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_WITH_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_LINK_COMPILE_COMMANDS
        "Link build/compile_commands.json, which clangd reads, to this tree's (top-level builds only)" OFF)
@@ -45,15 +47,21 @@ include(cmake/anira-models.cmake)
 include(cmake/licenses.cmake)
 
 # ------------------------------------------------------------------------------
-# The libraries: core (always), then one add_subdirectory per task behind
-# ANIRA_MODELS_WITH_<TASK>.
+# The libraries: core (always), then one add_subdirectory per model behind
+# ANIRA_MODELS_WITH_<MODEL>.
 # ------------------------------------------------------------------------------
 add_subdirectory(core)
 if(ANIRA_MODELS_WITH_HANDTRACKING)
     add_subdirectory(models/handtracking)
 endif()
-if(ANIRA_MODELS_WITH_STT)
-    add_subdirectory(models/speech-to-text)
+if(ANIRA_MODELS_WITH_SILERO_VAD)
+    add_subdirectory(models/silero-vad)
+endif()
+if(ANIRA_MODELS_WITH_PARAKEET_TDT)
+    add_subdirectory(models/parakeet-tdt)
+endif()
+if(ANIRA_MODELS_WITH_NEMOTRON_DIARIZATION)
+    add_subdirectory(models/nemotron-diarization)
 endif()
 
 anira_models_check_licenses()

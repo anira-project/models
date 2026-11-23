@@ -76,7 +76,7 @@ elseif(CASE STREQUAL "missing_local_fails")
 elseif(CASE STREQUAL "download")
     # Network: Silero VAD from Hugging Face into an empty cache, by the repository's catalog.
     set(ANIRA_MODELS_CACHE_DIR "${WORK_DIR}/cache")
-    anira_models_fetch(${REPO_ROOT}/models/speech-to-text/silero-vad.catalog.json
+    anira_models_fetch(${REPO_ROOT}/models/silero-vad/silero-vad.catalog.json
                            OUT_DIR _dir OUT_FILES _files ENGINES onnxruntime)
     expect_equal("${_files}" "LICENSE;onnx/silero_vad_16k.onnx" "OUT_FILES")
     if(NOT EXISTS "${_dir}/onnx/silero_vad_16k.onnx")
@@ -84,7 +84,7 @@ elseif(CASE STREQUAL "download")
     endif()
     # A damaged file in the cache is downloaded again, not an error.
     file(WRITE "${_dir}/onnx/silero_vad_16k.onnx" "damaged")
-    anira_models_fetch(${REPO_ROOT}/models/speech-to-text/silero-vad.catalog.json
+    anira_models_fetch(${REPO_ROOT}/models/silero-vad/silero-vad.catalog.json
                            OUT_DIR _dir ENGINES onnxruntime)
     file(SHA256 "${_dir}/onnx/silero_vad_16k.onnx" _repaired)
     expect_equal("${_repaired}" "165af836d0a0442bfe5d5d91c3e715a995d55ac21ecc1179a96301fe140e7e2c"
