@@ -5,9 +5,8 @@ preset := "debug"
 default:
     @just --list
 
-# The pre-push hook and the dev configure (compile DB for clangd)
+# The dev configure (compile DB for clangd)
 setup:
-    ln -sf ../../hooks/tanh/pre-push .git/hooks/pre-push
     cmake --preset {{preset}}
 
 # Configure + build
@@ -31,9 +30,9 @@ format-check:
 check-streaming WEIGHTS:
     uv run tools/check_streaming.py {{WEIGHTS}}
 
-# Reinstall the tanh-tooling copies (.clang-*, cmake/tanh/, hooks/tanh/) at the pinned version
+# Reinstall the tanh-tooling copies (.clang-*, cmake/tanh/) at the pinned version
 tooling-install VERSION="v0.3.0":
-    curl -fsSL https://raw.githubusercontent.com/tanh-lab/tanh-tooling/{{VERSION}}/install.sh | sh -s -- clang cmake hooks
+    curl -fsSL https://raw.githubusercontent.com/tanh-lab/tanh-tooling/{{VERSION}}/install.sh | sh -s -- clang cmake
 
 # Remove every build directory
 clean:
