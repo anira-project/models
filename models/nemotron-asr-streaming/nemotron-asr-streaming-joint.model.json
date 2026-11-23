@@ -1,0 +1,13 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/joint.onnx"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "encoder_output", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 1], ["feature", 1024]]},
+    {"name": "decoder_output", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 1], ["feature", 640]]}
+  ],
+  "outputs": [
+    {"name": "joint_output", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 1], ["any", 1], ["feature", 13088]]}
+  ]
+}

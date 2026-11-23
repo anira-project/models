@@ -1,0 +1,21 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/encoder.onnx"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio_signal", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 65], ["feature", 128]]},
+    {"name": "length", "dtype": "int64", "role": "static", "axes": [["any", 1]]},
+    {"name": "cache_last_channel", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 24], ["any", 56], ["feature", 1024]], "state_source": "cache_last_channel_next"},
+    {"name": "cache_last_time", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 24], ["feature", 1024], ["any", 8]], "state_source": "cache_last_time_next"},
+    {"name": "cache_last_channel_len", "dtype": "int64", "role": "state", "axes": [["any", 1]], "state_source": "cache_last_channel_len_next"},
+    {"name": "lang_id", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ],
+  "outputs": [
+    {"name": "outputs", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 7], ["feature", 1024]]},
+    {"name": "encoded_lengths", "dtype": "int64", "role": "static", "axes": [["any", 1]]},
+    {"name": "cache_last_channel_next", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 24], ["any", 56], ["feature", 1024]]},
+    {"name": "cache_last_time_next", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 24], ["feature", 1024], ["any", 8]]},
+    {"name": "cache_last_channel_len_next", "dtype": "int64", "role": "state", "axes": [["any", 1]]}
+  ]
+}

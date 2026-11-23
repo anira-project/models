@@ -1,0 +1,16 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/decoder.onnx"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "targets", "dtype": "int64", "role": "buffer", "axes": [["batch", 1], ["any", 1]]},
+    {"name": "h_in", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]},
+    {"name": "c_in", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]}
+  ],
+  "outputs": [
+    {"name": "decoder_output", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 640], ["any", 1]]},
+    {"name": "h_out", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]},
+    {"name": "c_out", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]}
+  ]
+}
