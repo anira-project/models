@@ -1,0 +1,1 @@
+{"hard": {"budget": {"ms": 16.0}, "warmup": {"fixed": 1}, "on_miss": "zeros"}}

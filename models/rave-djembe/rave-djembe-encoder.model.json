@@ -1,0 +1,19 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/rave_encoder.onnx"},
+    {"engine": "libtorch", "path": "libtorch/rave_encoder.pt"},
+    {"engine": "litert", "path": "litert/rave_encoder.tflite"},
+    {"engine": "tflite", "path": "litert/rave_encoder.tflite"},
+    {"engine": "executorch", "path": "executorch/rave_encoder.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_encoder_coreml.pte"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 1024]], "window": {"min": 1024, "max": 1024}},
+    {"name": "state_in", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 7136]], "state_source": "state_out"}
+  ],
+  "outputs": [
+    {"name": "latent_out", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 2], ["time", 8]], "window": {"min": 8, "max": 8}},
+    {"name": "state_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 7136]]}
+  ]
+}

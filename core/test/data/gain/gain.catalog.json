@@ -1,0 +1,8 @@
+{
+  "repo": "gain",
+  "revision": "local",
+  "license": "Apache-2.0",
+  "files": [
+    {"path": "simple_gain_network_mono.onnx", "engine": "onnxruntime", "size": 476, "sha256": "58906a580de0b9e96815095bb651477378cfcfad75d1e70c71d43399ad17b1cb"}
+  ]
+}

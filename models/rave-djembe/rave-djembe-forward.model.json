@@ -1,0 +1,20 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/rave_forward.onnx"},
+    {"engine": "libtorch", "path": "libtorch/rave_forward.pt"},
+    {"engine": "litert", "path": "litert/rave_forward.tflite"},
+    {"engine": "tflite", "path": "litert/rave_forward.tflite"},
+    {"engine": "executorch", "path": "executorch/rave_forward.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_forward_coreml.pte"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 1024]], "window": {"min": 1024, "max": 1024}},
+    {"name": "state_in", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 161600]], "state_source": "state_out"},
+    {"name": "fill_in", "dtype": "float32", "role": "static", "axes": [["batch", 1], ["channel", 14], ["any", 8]]}
+  ],
+  "outputs": [
+    {"name": "audio_out", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 1024]], "window": {"min": 1024, "max": 1024}},
+    {"name": "state_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 161600]]}
+  ]
+}

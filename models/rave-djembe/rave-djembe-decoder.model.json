@@ -1,0 +1,20 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/rave_decoder.onnx"},
+    {"engine": "libtorch", "path": "libtorch/rave_decoder.pt"},
+    {"engine": "litert", "path": "litert/rave_decoder.tflite"},
+    {"engine": "tflite", "path": "litert/rave_decoder.tflite"},
+    {"engine": "executorch", "path": "executorch/rave_decoder.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_decoder_coreml.pte"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "latent_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 2], ["time", 8]], "window": {"min": 8, "max": 8}},
+    {"name": "state_in", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 154464]], "state_source": "state_out"},
+    {"name": "fill_in", "dtype": "float32", "role": "static", "axes": [["batch", 1], ["channel", 14], ["any", 8]]}
+  ],
+  "outputs": [
+    {"name": "audio_out", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 1024]], "window": {"min": 1024, "max": 1024}},
+    {"name": "state_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 154464]]}
+  ]
+}

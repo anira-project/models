@@ -1,0 +1,29 @@
+{
+  "repo": "anira-project/parakeet-tdt-0.6b-v3",
+  "revision": "993bc8ae319cdb655959d42eef5e0d197f1e42c4",
+  "license": "CC-BY-4.0",
+  "files": [
+    {"path": "LICENSE", "size": 18657, "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"},
+    {"path": "coreml/decoder_joint.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "size": 10963, "sha256": "7fe4ec70d654cf657784fe4022a28740ba2f38e24aa4a727d077ea876e472e29"},
+    {"path": "coreml/decoder_joint.mlpackage/Data/com.apple.CoreML/weights/weight.bin", "engine": "coreml", "size": 72494528, "sha256": "1b4cfbad649f43b5014704c7fe93b5c6e636bfd09734e2cf1867a1f259648327"},
+    {"path": "coreml/decoder_joint.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "2d2231ed25576654bec4c9fd1603b95998a08ac3ab0162c625c0577f56615f89"},
+    {"path": "coreml/encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "size": 792056, "sha256": "4d54cfe2703b1dfeaee8fd37b9d7e4f6930b4572cc56d29644376670188c9b56"},
+    {"path": "coreml/encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin", "engine": "coreml", "size": 1205520832, "sha256": "fd9eca4f2622138a0b6e3f73b05d35130371e5dcf6a504db3e9bd134db14eb09"},
+    {"path": "coreml/encoder.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "193aeb7dbd28721fdc4725353f715149cc5e90cca15f7eeaf9b8d53c5fc9d123"},
+    {"path": "coreml/encoder.mlpackage/executorch_debug_handle_mapping.json", "engine": "coreml", "size": 595799, "sha256": "8a97cf9c64900e337772b3139146d4c562340274cf4da69be4ac4bde186c2e3c"},
+    {"path": "coreml/preprocessor.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "size": 16397, "sha256": "3d8c2fe8e87ccc51d02aa94efee48059948bd67a3cdd2e00c6923a9a2dd3abf0"},
+    {"path": "coreml/preprocessor.mlpackage/Data/com.apple.CoreML/weights/weight.bin", "engine": "coreml", "size": 4769344, "sha256": "b960cf78f1d018421d1ad190ada0bb00fe6870fae61bc49b41c63a0833533848"},
+    {"path": "coreml/preprocessor.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "817aac757a5a9c4e233cc8a2f97d0859c3bcad751f6ce53ebbff60fb408dd0d8"},
+    {"path": "coreml/preprocessor.mlpackage/executorch_debug_handle_mapping.json", "engine": "coreml", "size": 18790, "sha256": "11549201b2cc631e327527226a808b5e516e4960ef1eb85defa6fcf9fe494be8"},
+    {"path": "decoder_joint-model.int8.onnx", "engine": "onnxruntime", "size": 18202004, "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"},
+    {"path": "encoder-model.int8.onnx", "engine": "onnxruntime", "size": 652183999, "sha256": "6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09"},
+    {"path": "executorch/decoder_joint.pte", "engine": "executorch", "size": 72534936, "sha256": "d5e475fe4e5e68fe1862bb107e44872e2de0442394408b6a233ee2f300e1ab64"},
+    {"path": "executorch/decoder_joint_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 72580348, "sha256": "b1046bf99880b6f2e091a887d2f940381ffe86e4e9c88e49cd24044988960049"},
+    {"path": "executorch/encoder.pte", "engine": "executorch", "size": 2477021440, "sha256": "bee066ca089ef5f6d1cfb3835f0b241272e43e2cc9ade55308ac79fe0b575a08"},
+    {"path": "executorch/encoder_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 1208602569, "sha256": "f2b5ab2a3aeb62b2dac742d39fae8d4351fcc4cd5a497cfea9ed7dff99a9d81f"},
+    {"path": "executorch/preprocessor.pte", "engine": "executorch", "size": 1204352, "sha256": "e1225e1867e89b64fb3a3dd7245dcca43d7f4fd653bb300fb2b05d50f1cb3cb8"},
+    {"path": "executorch/preprocessor_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 2858886, "sha256": "d9cae0a62e2433427f76e014573e702250ccdbcac28f0367432578d5c7633032"},
+    {"path": "nemo128.onnx", "engine": "onnxruntime", "size": 139764, "sha256": "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f"},
+    {"path": "vocab.txt", "size": 93939, "sha256": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d"}
+  ]
+}

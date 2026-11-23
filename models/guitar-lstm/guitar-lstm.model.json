@@ -1,0 +1,29 @@
+{
+  "models": [
+    {"engine": "libtorch", "path": "libtorch/GuitarLSTM-dynamic.pt"},
+    {"engine": "onnxruntime", "path": "onnx/GuitarLSTM-libtorch-dynamic.onnx"},
+    {"engine": "tflite", "path": "litert/GuitarLSTM.tflite"},
+    {"engine": "litert", "path": "litert/GuitarLSTM.tflite"},
+    {"engine": "executorch", "path": "executorch/GuitarLSTM-executorch.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/GuitarLSTM_coreml.pte"}
+  ],
+  "inputs": [
+    {
+      "name": "audio_in",
+      "dtype": "float32",
+      "role": "streamed",
+      "axes": [["any", 256], ["channel", 1], ["time", 150]],
+      "window": { "min": 405, "max": 405 },
+      "overlap": 149
+    }
+  ],
+  "outputs": [
+    {
+      "name": "audio_out",
+      "dtype": "float32",
+      "role": "streamed",
+      "axes": [["any", 256], ["time", 1]],
+      "window": { "min": 256, "max": 256 }
+    }
+  ]
+}

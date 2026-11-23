@@ -1,0 +1,19 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/silero_vad_16k.onnx"},
+    {"engine": "litert", "path": "litert/silero_vad_16k.tflite"},
+    {"engine": "tflite", "path": "litert/silero_vad_16k.tflite"},
+    {"engine": "executorch", "path": "executorch/silero_vad_16k.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/silero_vad_16k_coreml.pte"},
+    {"engine": "libtorch", "path": "libtorch/silero_vad_16k.pt"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 512]], "window": {"min": 512, "max": 512}},
+    {"name": "state_in", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 320]], "state_source": "state_out"}
+  ],
+  "outputs": [
+    {"name": "probability", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 1]], "window": {"min": 1, "max": 1}},
+    {"name": "state_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 320]]}
+  ]
+}

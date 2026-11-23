@@ -1,0 +1,19 @@
+{
+  "models": [
+    {"engine": "litert", "path": "litert/gesture_embedder.tflite"},
+    {"engine": "tflite", "path": "litert/gesture_embedder.tflite"},
+    {"engine": "onnxruntime", "path": "onnx/gesture_embedder.onnx"},
+    {"engine": "libtorch", "path": "libtorch/gesture_embedder.pt"},
+    {"engine": "executorch", "path": "executorch/gesture_embedder.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/gesture_embedder_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "hand", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 21], ["feature", 3]]},
+    {"name": "handedness", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 1]]},
+    {"name": "world_hand", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 21], ["feature", 3]]}
+  ],
+  "outputs": [
+    {"name": "embedding", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 128]]}
+  ]
+}

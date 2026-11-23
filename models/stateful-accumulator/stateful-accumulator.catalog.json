@@ -1,0 +1,24 @@
+{
+  "repo": "anira-project/stateful-accumulator",
+  "revision": "88203ed635bfbff534614ca056f8e4bdc74f36f5",
+  "license": "Apache-2.0",
+  "files": [
+    {"path": "LICENSE", "size": 11357, "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"},
+    {"path": "coreml/stateful_accumulator_network_mono.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "model": "stateful-accumulator-mono.model.json", "size": 3007, "sha256": "e96817983c1dbf6931940efa5a93f01fb134118082e3d6ee0421a3b49db063d3"},
+    {"path": "coreml/stateful_accumulator_network_mono.mlpackage/Manifest.json", "engine": "coreml", "model": "stateful-accumulator-mono.model.json", "size": 617, "sha256": "4a25f5b358894c1756bd92bc6132ab330970e033f6d6a9a5fd386cebd79f2f77"},
+    {"path": "coreml/stateful_accumulator_network_stereo.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "model": "stateful-accumulator-stereo.model.json", "size": 3007, "sha256": "842ddf669ab0125555b5cb66a4a2b7a62399cdb6523b944ab462964cd9c414ce"},
+    {"path": "coreml/stateful_accumulator_network_stereo.mlpackage/Manifest.json", "engine": "coreml", "model": "stateful-accumulator-stereo.model.json", "size": 617, "sha256": "662c8eca12c0ef5bdd70ca23303f9129a2c9fb7e9c7019b9e5f5f817c5060f02"},
+    {"path": "executorch/stateful_accumulator_network_mono.pte", "engine": "executorch", "size": 2820, "sha256": "c4497f2a68db0cc75a0800301dff043fb89df9e74aa0633a8073c8038cd60c29"},
+    {"path": "executorch/stateful_accumulator_network_mono_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 14419, "sha256": "6768951fa891811582bcd88d60b732a78265dd9e75879cc8bda324783f18edd8"},
+    {"path": "executorch/stateful_accumulator_network_mono_vulkan.pte", "engine": "executorch", "provider": "vulkan", "model": "stateful-accumulator-mono.model.json", "size": 3332, "sha256": "f215c95f6d865e626dbf36d6ebd0deff63cee0b58f1b3e9e526715402a51ac34"},
+    {"path": "executorch/stateful_accumulator_network_stereo.pte", "engine": "executorch", "size": 2820, "sha256": "5f1b05967f97e46bd95347b42afe2f96e533a72368ef8b6564d1415459311e45"},
+    {"path": "executorch/stateful_accumulator_network_stereo_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 14419, "sha256": "82cfc20a9dd05bfbacf7f8296a39846f625eec7ad9ade990868b1f0f4324f7ce"},
+    {"path": "executorch/stateful_accumulator_network_stereo_vulkan.pte", "engine": "executorch", "provider": "vulkan", "model": "stateful-accumulator-stereo.model.json", "size": 3332, "sha256": "216fe903405769b025e77268a3a21162efd33723a2f635ba9a6e55f454539558"},
+    {"path": "libtorch/stateful_accumulator_network_mono.pt", "engine": "libtorch", "size": 4523, "sha256": "e8db1874b46aa96c4e9cff6545b91a9bc780fe6a9b39450b03ffe2e38f90095b"},
+    {"path": "libtorch/stateful_accumulator_network_stereo.pt", "engine": "libtorch", "size": 4581, "sha256": "b1b9a55a7212b0f34eb02536fb750cf425860e138ef651c747e0cd577e1a6792"},
+    {"path": "litert/stateful_accumulator_network_mono.tflite", "engines": ["litert", "tflite"], "size": 2748, "sha256": "0a558a85827dd36778d88ee5540f64922502255d05d1924eca6e7db9b0d7a3e6"},
+    {"path": "litert/stateful_accumulator_network_stereo.tflite", "engines": ["litert", "tflite"], "size": 2760, "sha256": "8cab062194313366d013046e0930d18d588b60b61d83ec124c37a7de854ba7a5"},
+    {"path": "onnx/stateful_accumulator_network_mono.onnx", "engine": "onnxruntime", "size": 1470, "sha256": "b170e76012c9c0116923cb5f71459380a279457828e9c139093d103c24d0b7ed"},
+    {"path": "onnx/stateful_accumulator_network_stereo.onnx", "engine": "onnxruntime", "size": 1470, "sha256": "2be8eaea68c2a16b9ab49858f50bedcb5219baaeeaf63e084a1afa2dddeedabe"}
+  ]
+}

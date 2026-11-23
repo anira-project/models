@@ -1,0 +1,20 @@
+{
+  "models": [
+    {"engine": "litert", "path": "litert/hand_landmarks_detector.tflite"},
+    {"engine": "tflite", "path": "litert/hand_landmarks_detector.tflite"},
+    {"engine": "onnxruntime", "path": "onnx/hand_landmarks_detector.onnx"},
+    {"engine": "libtorch", "path": "libtorch/hand_landmarks_detector.pt"},
+    {"engine": "executorch", "path": "executorch/hand_landmarks_detector.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/hand_landmarks_detector_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "image", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["height", 224], ["width", 224], ["channel", 3]]}
+  ],
+  "outputs": [
+    {"name": "landmarks", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 63]]},
+    {"name": "presence", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 1]]},
+    {"name": "handedness", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 1]]},
+    {"name": "world_landmarks", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 63]]}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "models": [
+    {"engine": "litert", "path": "litert/hand_detector.tflite"},
+    {"engine": "tflite", "path": "litert/hand_detector.tflite"},
+    {"engine": "onnxruntime", "path": "onnx/hand_detector.onnx"},
+    {"engine": "libtorch", "path": "libtorch/hand_detector.pt"},
+    {"engine": "executorch", "path": "executorch/hand_detector.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/hand_detector_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "image", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["height", 192], ["width", 192], ["channel", 3]]}
+  ],
+  "outputs": [
+    {"name": "boxes", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 2016], ["feature", 18]]},
+    {"name": "scores", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 2016], ["feature", 1]]}
+  ]
+}

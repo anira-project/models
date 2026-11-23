@@ -1,0 +1,20 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/mrp_strengjavera_forward.onnx"},
+    {"engine": "libtorch", "path": "libtorch/mrp_strengjavera_forward.pt"},
+    {"engine": "litert", "path": "litert/mrp_strengjavera_forward.tflite"},
+    {"engine": "tflite", "path": "litert/mrp_strengjavera_forward.tflite"},
+    {"engine": "executorch", "path": "executorch/mrp_strengjavera_forward.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/mrp_strengjavera_forward_coreml.pte"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 2048]], "window": {"min": 2048, "max": 2048}},
+    {"name": "state_in", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 63488]], "state_source": "state_out"},
+    {"name": "noise", "dtype": "float32", "role": "static", "axes": [["batch", 1], ["channel", 120], ["any", 1]]}
+  ],
+  "outputs": [
+    {"name": "audio_out", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 2048]], "window": {"min": 2048, "max": 2048}},
+    {"name": "state_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 63488]]}
+  ]
+}

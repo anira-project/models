@@ -1,0 +1,17 @@
+{
+  "models": [
+    {"engine": "litert", "path": "litert/canned_gesture_classifier.tflite"},
+    {"engine": "tflite", "path": "litert/canned_gesture_classifier.tflite"},
+    {"engine": "onnxruntime", "path": "onnx/canned_gesture_classifier.onnx"},
+    {"engine": "libtorch", "path": "libtorch/canned_gesture_classifier.pt"},
+    {"engine": "executorch", "path": "executorch/canned_gesture_classifier.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/canned_gesture_classifier_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "hand_embedding", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 128]]}
+  ],
+  "outputs": [
+    {"name": "scores", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 8]]}
+  ]
+}

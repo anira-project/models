@@ -1,0 +1,12 @@
+{
+  "models": [
+    {"engine": "libtorch", "path": "libtorch/Djembe_streaming.ts", "entry": {"name": "encode"}}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 1], ["time", 1024]], "window": {"min": 1024, "max": 1024}}
+  ],
+  "outputs": [
+    {"name": "latent_out", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 2], ["time", 8]], "window": {"min": 8, "max": 8}}
+  ]
+}

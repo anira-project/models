@@ -1,0 +1,40 @@
+set shell := ["bash", "-cu"]
+
+preset := "debug"
+
+default:
+    @just --list
+
+# The pre-push hook and the dev configure (compile DB for clangd)
+setup:
+    ln -sf ../../hooks/tanh/pre-push .git/hooks/pre-push
+    cmake --preset {{preset}}
+
+# Configure + build
+build:
+    cmake --preset {{preset}} > /dev/null
+    cmake --build --preset {{preset}}
+
+# Build + run every test
+test: build
+    ctest --preset {{preset}}
+
+# clang-format in place
+format:
+    find . -path ./build -prune -o -path ./.cache -prune -o \( -name '*.cpp' -o -name '*.h' \) -print | xargs clang-format -i
+
+# clang-format check
+format-check:
+    find . -path ./build -prune -o -path ./.cache -prune -o \( -name '*.cpp' -o -name '*.h' \) -print | xargs clang-format --dry-run --Werror
+
+# Every format of every description over consecutive calls, and every engine and backend present
+check-streaming WEIGHTS:
+    uv run tools/check_streaming.py {{WEIGHTS}}
+
+# Reinstall the tanh-tooling copies (.clang-*, cmake/tanh/, hooks/tanh/) at the pinned version
+tooling-install VERSION="v0.3.0":
+    curl -fsSL https://raw.githubusercontent.com/tanh-lab/tanh-tooling/{{VERSION}}/install.sh | sh -s -- clang cmake hooks
+
+# Remove every build directory
+clean:
+    rm -rf build
