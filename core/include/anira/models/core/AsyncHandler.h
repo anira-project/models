@@ -111,6 +111,8 @@ public:
     /// Runs on_complete for the jobs done since the last poll; their number.
     std::uint32_t poll();
 
+    /// A new stream: every lane's State back to zero (anira_handler_reset). No job in flight.
+    void reset() noexcept;
     anira_status set_plan(std::uint32_t plan) noexcept;
     [[nodiscard]] anira::PlanReport plan_report() const;
     /// The description as the Hard handlers run it (for tests and logs).

@@ -321,6 +321,10 @@ std::uint32_t AsyncHandler::poll() {
     return done;
 }
 
+void AsyncHandler::reset() noexcept {
+    for (Lane& lane : m_lanes) { lane.m_handler->reset(); }
+}
+
 anira_status AsyncHandler::set_plan(std::uint32_t plan) noexcept {
     anira_status status = ANIRA_OK;
     for (Lane& lane : m_lanes) {

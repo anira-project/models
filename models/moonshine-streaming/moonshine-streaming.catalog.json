@@ -1,6 +1,6 @@
 {
   "repo": "anira-project/moonshine-streaming",
-  "revision": "d90d22d17c0da91bdad77318c0864e0600bb76a3",
+  "revision": "61e793e40c29e14082f63283f745c060cbc7119f",
   "license": "MIT",
   "files": [
     {"path": "LICENSE", "size": 14180, "sha256": "fa7d1174dd8af6a7cd280be20b80d10095ed4c19b5b20b61a7715c3ad790dc5f"},
