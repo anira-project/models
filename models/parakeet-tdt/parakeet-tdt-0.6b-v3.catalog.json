@@ -1,6 +1,6 @@
 {
   "repo": "anira-project/parakeet-tdt-0.6b-v3",
-  "revision": "d423aae9cee6d48ccaaa5adcd679c88f52551f83",
+  "revision": "3c526747bd558336dbbe707228a4cbe0375cb9b7",
   "license": "CC-BY-4.0",
   "files": [
     {"path": "LICENSE", "size": 18657, "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"},
@@ -16,7 +16,7 @@
     {"path": "coreml/preprocessor.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "817aac757a5a9c4e233cc8a2f97d0859c3bcad751f6ce53ebbff60fb408dd0d8"},
     {"path": "coreml/preprocessor.mlpackage/executorch_debug_handle_mapping.json", "engine": "coreml", "size": 18790, "sha256": "11549201b2cc631e327527226a808b5e516e4960ef1eb85defa6fcf9fe494be8"},
     {"path": "decoder_joint-model.int8.onnx", "engine": "onnxruntime", "size": 18202004, "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"},
-    {"path": "encoder-model.q4.onnx", "engine": "onnxruntime", "size": 687736805, "sha256": "f8516e6346bf19de00916a52cb80eca08e5827f9a69dce803e5a29dd7eab5b20"},
+    {"path": "encoder-model.q4.onnx", "engine": "onnxruntime", "size": 434134089, "sha256": "9cecd3eb7c30fc9fadef22da914a4c95c337d0aeb3c30cc4a942075d37451b61"},
     {"path": "executorch/decoder_joint.pte", "engine": "executorch", "size": 72534936, "sha256": "d5e475fe4e5e68fe1862bb107e44872e2de0442394408b6a233ee2f300e1ab64"},
     {"path": "executorch/decoder_joint_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 72580348, "sha256": "b1046bf99880b6f2e091a887d2f940381ffe86e4e9c88e49cd24044988960049"},
     {"path": "executorch/encoder.pte", "engine": "executorch", "size": 2477021440, "sha256": "bee066ca089ef5f6d1cfb3835f0b241272e43e2cc9ade55308ac79fe0b575a08"},
