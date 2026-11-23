@@ -45,7 +45,8 @@ target_link_libraries(anira-models-tests
 if(TARGET anira::models::handtracking)
     target_sources(anira-models-tests PRIVATE
         ${PROJECT_SOURCE_DIR}/models/handtracking/test/test_Decode.cpp
-        ${PROJECT_SOURCE_DIR}/models/handtracking/test/test_Models.cpp)
+        ${PROJECT_SOURCE_DIR}/models/handtracking/test/test_Models.cpp
+        ${PROJECT_SOURCE_DIR}/models/handtracking/test/test_HandTracker.cpp)
     target_link_libraries(anira-models-tests PRIVATE anira::models::handtracking)
 endif()
 if(TARGET anira::models::silero_vad)
