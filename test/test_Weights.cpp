@@ -31,6 +31,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace core = anira::models::core;
 namespace fs = std::filesystem;
@@ -146,9 +147,19 @@ TEST(Weights, EveryDescriptionPreparesOnEveryEngineBuiltIn) {
         }
     }
 
+    std::vector<fs::path> descriptions;
+    for (const char* source : {ANIRA_MODELS_SOURCE_DIR, ANIRA_TEST_MODELS_SOURCE_DIR}) {
+        // <root>/<model>/<file>: a model folder's descriptions sit at its top.
+        for (const auto& folder : fs::directory_iterator(source)) {
+            if (!folder.is_directory()) { continue; }
+            for (const auto& entry : fs::directory_iterator(folder.path())) {
+                descriptions.push_back(entry.path());
+            }
+        }
+    }
+
     size_t prepared = 0;
-    for (const auto& entry : fs::recursive_directory_iterator(ANIRA_MODELS_SOURCE_DIR)) {
-        const fs::path& path = entry.path();
+    for (const fs::path& path : descriptions) {
         if (!ends_with(path, ".model.json")) { continue; }
         const std::string stem =
             path.string().substr(0, path.string().size() - std::string_view(".model.json").size());

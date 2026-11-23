@@ -1,0 +1,20 @@
+{
+  "repo": "anira-project/test-models",
+  "revision": "local",
+  "license": "Apache-2.0",
+  "files": [
+    {"path": "LICENSE", "size": 11357, "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"},
+    {"path": "variant-gain/executorch/variant_gain_network_double_mono.pte", "engine": "executorch", "size": 1540, "sha256": "9776f794ef9dd5c599dd84517a7fd8b29112d11f0096218fc883950f66b17d4f"},
+    {"path": "variant-gain/executorch/variant_gain_network_half_mono.pte", "engine": "executorch", "size": 1540, "sha256": "2f0c5e956a16b11769ab18a33f2691c96ffd3611bd44a1c6f01637d2af694b03"},
+    {"path": "variant-gain/executorch/variant_gain_network_invert_mono.pte", "engine": "executorch", "size": 1540, "sha256": "b3ee00c05b2972f9a7d0f58e30ea5affe7051ecae24743ca28a3613182880708"},
+    {"path": "variant-gain/libtorch/variant_gain_network_double_mono.pt", "engine": "libtorch", "size": 4923, "sha256": "bf2949944d0a1223e4ba697a1e2b103654ea23d8bf30cd42a25781c19728acfc"},
+    {"path": "variant-gain/libtorch/variant_gain_network_half_mono.pt", "engine": "libtorch", "size": 4635, "sha256": "59ee8583d5f4dd61ffeb0d900ebd6bb4f705f0e08a1ed0eb6f208f0ff18fe58b"},
+    {"path": "variant-gain/libtorch/variant_gain_network_invert_mono.pt", "engine": "libtorch", "size": 4923, "sha256": "a24ef0a1293ca01978c05c118e96fd4acc947010cd01ab30882a33d9e124c757"},
+    {"path": "variant-gain/litert/variant_gain_network_double_mono.tflite", "engines": ["litert", "tflite"], "size": 2204, "sha256": "4eb1ad152d2f64e04ec6dbdee0eaa7ff50298bcb0010d790dbf192059ff4e6fc"},
+    {"path": "variant-gain/litert/variant_gain_network_half_mono.tflite", "engines": ["litert", "tflite"], "size": 2204, "sha256": "8b8679a5f283a25a26e411593397f684f78e2ff58cc7c66caa4bd43a80edb1ce"},
+    {"path": "variant-gain/litert/variant_gain_network_invert_mono.tflite", "engines": ["litert", "tflite"], "size": 2204, "sha256": "986c77618f871677f6deb82d598bb5dc120b48360fbf882bec57b2f675d4550a"},
+    {"path": "variant-gain/onnx/variant_gain_network_double_mono.onnx", "engine": "onnxruntime", "size": 287, "sha256": "91c323ce25cebd2a79020bca37eaf89d09145b796b55403b5274dbef366fb258"},
+    {"path": "variant-gain/onnx/variant_gain_network_half_mono.onnx", "engine": "onnxruntime", "size": 287, "sha256": "9fc2f647e3a17a2676b5127b7b2925c212876d774366330080abe120a1785455"},
+    {"path": "variant-gain/onnx/variant_gain_network_invert_mono.onnx", "engine": "onnxruntime", "size": 287, "sha256": "a6e3d5251a5e7cd1b5f6e095881eeb7dea7f8e95e9070639220ea8b8f409c3a8"}
+  ]
+}

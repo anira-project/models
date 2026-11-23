@@ -14,12 +14,12 @@ namespace core = anira::models::core;
 
 using namespace models_test;
 
-// The catalog's weights, fetched from a local directory and embedded at configure time, run with
+// The catalog's weights, fetched and embedded at configure time, run with
 // the compiled-in description.
 TEST(CoreEmbed, EmbeddedModelsLoadAndRun) {
     const core::ModelSource source = models_test::gain_models();
     EXPECT_FALSE(source.is_directory());
-    EXPECT_TRUE(source.find_bytes("simple_gain_network_mono.onnx").has_value());
+    EXPECT_TRUE(source.find_bytes(k_gain_onnx).has_value());
 
     anira::Context context{anira::ContextConfig{}};
     const anira::ModelConfig model = core::load_model(k_gain_model_json, source);

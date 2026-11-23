@@ -7,10 +7,16 @@
 cmake_minimum_required(VERSION 3.25)
 include(${REPO_ROOT}/cmake/anira-models.cmake)
 
-set(_data "${REPO_ROOT}/core/test/data")
-set(_catalog "${_data}/gain/gain.catalog.json")
 file(REMOVE_RECURSE "${WORK_DIR}")
 file(MAKE_DIRECTORY "${WORK_DIR}")
+
+# The fixture: one weights file of repository "fixture" in a local directory, and its catalog.
+set(_data "${WORK_DIR}/local")
+file(WRITE "${_data}/fixture/onnx/model.onnx" "not a model, only bytes with a hash")
+file(SHA256 "${_data}/fixture/onnx/model.onnx" _sha)
+file(SIZE "${_data}/fixture/onnx/model.onnx" _size)
+set(_catalog "${WORK_DIR}/fixture.catalog.json")
+file(WRITE "${_catalog}" "{\"repo\": \"fixture\", \"revision\": \"local\", \"license\": \"Apache-2.0\", \"files\": [{\"path\": \"onnx/model.onnx\", \"engine\": \"onnxruntime\", \"size\": ${_size}, \"sha256\": \"${_sha}\"}]}")
 
 function(expect_equal actual expected what)
     if(NOT "${actual}" STREQUAL "${expected}")
@@ -21,8 +27,8 @@ endfunction()
 if(CASE STREQUAL "local")
     anira_models_fetch(${_catalog} OUT_DIR _dir OUT_FILES _files LOCAL_DIR ${_data}
                            ENGINES onnxruntime)
-    expect_equal("${_dir}" "${_data}/gain" "OUT_DIR")
-    expect_equal("${_files}" "simple_gain_network_mono.onnx" "OUT_FILES")
+    expect_equal("${_dir}" "${_data}/fixture" "OUT_DIR")
+    expect_equal("${_files}" "onnx/model.onnx" "OUT_FILES")
     # Only the files of the enabled engines: without ONNX Runtime the weights stay out.
     anira_models_fetch(${_catalog} OUT_DIR _dir OUT_FILES _files LOCAL_DIR ${_data}
                            ENGINES litert)
@@ -39,20 +45,20 @@ elseif(CASE STREQUAL "provider")
     expect_equal("${_files}" "" "OUT_FILES without Core ML")
     anira_models_fetch("${WORK_DIR}/catalog/catalog.json" OUT_DIR _dir OUT_FILES _files
                            LOCAL_DIR ${_data} ENGINES onnxruntime PROVIDERS coreml)
-    expect_equal("${_files}" "simple_gain_network_mono.onnx" "OUT_FILES with Core ML")
+    expect_equal("${_files}" "onnx/model.onnx" "OUT_FILES with Core ML")
 
 elseif(CASE STREQUAL "cache")
     # Files already in the cache are used without a download and stamped once verified.
     set(ANIRA_MODELS_CACHE_DIR "${WORK_DIR}/cache")
-    set(_cached "${WORK_DIR}/cache/gain/local")
-    file(COPY "${_data}/gain/" DESTINATION "${_cached}")
+    set(_cached "${WORK_DIR}/cache/fixture/local")
+    file(COPY "${_data}/fixture/" DESTINATION "${_cached}")
     anira_models_fetch(${_catalog} OUT_DIR _dir OUT_FILES _files ENGINES onnxruntime)
     expect_equal("${_dir}" "${_cached}" "OUT_DIR")
-    if(NOT EXISTS "${_cached}/simple_gain_network_mono.onnx.sha256")
+    if(NOT EXISTS "${_cached}/onnx/model.onnx.sha256")
         message(FATAL_ERROR "no stamp after verifying")
     endif()
     anira_models_fetch(${_catalog} OUT_DIR _dir OUT_FILES _files ENGINES onnxruntime)
-    expect_equal("${_files}" "simple_gain_network_mono.onnx" "OUT_FILES from the stamps")
+    expect_equal("${_files}" "onnx/model.onnx" "OUT_FILES from the stamps")
 
 elseif(CASE STREQUAL "bad_hash_fails")
     file(READ "${_catalog}" _json)

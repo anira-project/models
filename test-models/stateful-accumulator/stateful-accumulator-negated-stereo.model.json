@@ -1,0 +1,41 @@
+{
+  "models": [
+    {"engine": "libtorch", "path": "stateful-accumulator/libtorch/stateful_accumulator_network_negated_stereo.pt"},
+    {"engine": "onnxruntime", "path": "stateful-accumulator/onnx/stateful_accumulator_network_negated_stereo.onnx"},
+    {"engine": "executorch", "path": "stateful-accumulator/executorch/stateful_accumulator_network_negated_stereo.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "stateful-accumulator/executorch/stateful_accumulator_network_negated_stereo_coreml.pte"},
+    {"engine": "tflite", "path": "stateful-accumulator/litert/stateful_accumulator_network_negated_stereo.tflite"},
+    {"engine": "litert", "path": "stateful-accumulator/litert/stateful_accumulator_network_negated_stereo.tflite", "tensors": {"processed_data": {"name": "output_0"}, "state_out": {"name": "output_1"}}}
+  ],
+  "inputs": [
+    {
+      "name": "state_in",
+      "dtype": "float32",
+      "role": "state",
+      "axes": [["batch", 1], ["channel", 2], ["any", 2]],
+      "state_source": "state_out"
+    },
+    {
+      "name": "data",
+      "dtype": "float32",
+      "role": "streamed",
+      "axes": [["batch", 1], ["channel", 2], ["time", 64]],
+      "window": { "min": 64, "max": 64 }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "processed_data",
+      "dtype": "float32",
+      "role": "streamed",
+      "axes": [["batch", 1], ["channel", 2], ["time", 64]],
+      "window": { "min": 64, "max": 64 }
+    },
+    {
+      "name": "state_out",
+      "dtype": "float32",
+      "role": "state",
+      "axes": [["batch", 1], ["channel", 2], ["any", 2]]
+    }
+  ]
+}

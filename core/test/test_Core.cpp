@@ -23,8 +23,8 @@ using namespace models_test;
 TEST(CoreModelSource, ReadsTextFromADirectory) {
     const core::ModelSource source = core::ModelSource::directory(gain_dir());
     EXPECT_TRUE(source.is_directory());
-    EXPECT_NE(source.read_text("./gain.model.json").find("audio_in"), std::string::npos);
-    EXPECT_FALSE(source.find_bytes("gain.model.json").has_value());
+    EXPECT_NE(source.read_text("./LICENSE").find("Apache License"), std::string::npos);
+    EXPECT_FALSE(source.find_bytes("LICENSE").has_value());
 }
 
 TEST(CoreModelSource, AMissingFileThrows) {
@@ -52,9 +52,9 @@ TEST(CoreModel, LoadsFromADirectoryAndRuns) {
 }
 
 TEST(CoreModel, LoadsFromBytesAndRuns) {
-    const std::vector<std::byte> onnx = read_file(gain_dir() / "simple_gain_network_mono.onnx");
+    const std::vector<std::byte> onnx = read_file(gain_dir() / k_gain_onnx);
     const core::ModelSource weights =
-        core::ModelSource::bytes({{.m_path = "simple_gain_network_mono.onnx", .m_bytes = onnx}});
+        core::ModelSource::bytes({{.m_path = k_gain_onnx, .m_bytes = onnx}});
     anira::Context context{anira::ContextConfig{}};
     const anira::ModelConfig model = core::load_model(k_gain_model_json, weights);
     anira::ContractHandle contract = anira::ContractHandle::from_json(k_gain_contract_json);

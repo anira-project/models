@@ -4,17 +4,16 @@ include(${PROJECT_SOURCE_DIR}/cmake/tanh/test-deps.cmake)
 tanh_fetch_googletest(VERSION v1.17.0)
 
 # The gain model as a library would carry it: its description compiled in, its weights from the
-# catalog (fetched from the test data and embedded, as an application would).
+# test-models catalog (fetched and embedded, as an application would).
 anira_models_embed_text(models_test_gain_descriptions
     NAMESPACE models_test
     HEADER GainDescriptions.h
     FILES
         ${PROJECT_SOURCE_DIR}/core/test/data/gain/gain.model.json
         ${PROJECT_SOURCE_DIR}/core/test/data/gain/gain.contract.json)
-anira_models_fetch(${PROJECT_SOURCE_DIR}/core/test/data/gain/gain.catalog.json
+anira_models_fetch(${PROJECT_SOURCE_DIR}/test-models/simple-gain/test-models.catalog.json
     OUT_DIR _gain_dir
     OUT_FILES _gain_files
-    LOCAL_DIR ${PROJECT_SOURCE_DIR}/core/test/data
     ENGINES onnxruntime)
 anira_models_embed(models_test_gain_models
     NAMESPACE models_test
@@ -31,8 +30,9 @@ add_executable(anira-models-tests
     ${PROJECT_SOURCE_DIR}/core/test/test_Embed.cpp
 )
 target_compile_definitions(anira-models-tests
-    PRIVATE MODELS_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/core/test/data"
-            ANIRA_MODELS_SOURCE_DIR="${PROJECT_SOURCE_DIR}/models")
+    PRIVATE MODELS_TEST_GAIN_DIR="${_gain_dir}"
+            ANIRA_MODELS_SOURCE_DIR="${PROJECT_SOURCE_DIR}/models"
+            ANIRA_TEST_MODELS_SOURCE_DIR="${PROJECT_SOURCE_DIR}/test-models")
 target_link_libraries(anira-models-tests
     PRIVATE anira::models::core models_test_gain_models models_test_gain_descriptions
             anira::anira nlohmann_json::nlohmann_json gtest_main)

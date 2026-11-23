@@ -1,6 +1,6 @@
 {
   "models": [
-    { "engine": "onnxruntime", "path": "simple_gain_network_mono.onnx" }
+    { "engine": "onnxruntime", "path": "simple-gain/onnx/simple_gain_network_mono.onnx" }
   ],
   "inputs": [
     {

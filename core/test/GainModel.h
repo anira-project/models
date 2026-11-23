@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// The gain model (core/test/data/gain) on anira's Hard path: a run that shows it loaded from what a
+// The gain model (test-models/simple-gain, mono, ONNX Runtime) on anira's Hard path: a run that shows it loaded from what a
 // source held, and a prepare that reports what anira refused.
 
 #pragma once
@@ -25,9 +25,10 @@ namespace models_test {
 inline constexpr size_t k_block = 512;
 inline constexpr double k_rate = 48000.0;
 inline constexpr float k_gain = 0.5F;
+inline constexpr const char* k_gain_onnx = "simple-gain/onnx/simple_gain_network_mono.onnx";
 
 inline std::filesystem::path gain_dir() {
-    return std::filesystem::path(MODELS_TEST_DATA_DIR) / "gain";
+    return std::filesystem::path(MODELS_TEST_GAIN_DIR);
 }
 
 inline std::vector<std::byte> read_file(const std::filesystem::path& path) {

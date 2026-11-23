@@ -1,0 +1,27 @@
+{
+  "models": [
+    {"engine": "libtorch", "path": "variant-gain/libtorch/variant_gain_network_double_mono.pt"},
+    {"engine": "onnxruntime", "path": "variant-gain/onnx/variant_gain_network_double_mono.onnx"},
+    {"engine": "tflite", "path": "variant-gain/litert/variant_gain_network_double_mono.tflite"},
+    {"engine": "litert", "path": "variant-gain/litert/variant_gain_network_double_mono.tflite"},
+    {"engine": "executorch", "path": "variant-gain/executorch/variant_gain_network_double_mono.pte"}
+  ],
+  "inputs": [
+    {
+      "name": "data",
+      "dtype": "float32",
+      "role": "streamed",
+      "axes": [["batch", 1], ["channel", 1], ["time", 512]],
+      "window": { "min": 512, "max": 512 }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "processed_data",
+      "dtype": "float32",
+      "role": "streamed",
+      "axes": [["batch", 1], ["channel", 1], ["time", 512]],
+      "window": { "min": 512, "max": 512 }
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 {
   "models": [
-    {"engine": "libtorch", "path": "libtorch/stateful_accumulator_network_mono.pt"},
-    {"engine": "onnxruntime", "path": "onnx/stateful_accumulator_network_mono.onnx"},
-    {"engine": "executorch", "path": "executorch/stateful_accumulator_network_mono.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/stateful_accumulator_network_mono_coreml.pte"},
-    {"engine": "tflite", "path": "litert/stateful_accumulator_network_mono.tflite"},
-    {"engine": "litert", "path": "litert/stateful_accumulator_network_mono.tflite", "tensors": {"processed_data": {"name": "output_0"}, "state_out": {"name": "output_1"}}}
+    {"engine": "libtorch", "path": "stateful-accumulator/libtorch/stateful_accumulator_network_mono.pt"},
+    {"engine": "onnxruntime", "path": "stateful-accumulator/onnx/stateful_accumulator_network_mono.onnx"},
+    {"engine": "executorch", "path": "stateful-accumulator/executorch/stateful_accumulator_network_mono.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "stateful-accumulator/executorch/stateful_accumulator_network_mono_coreml.pte"},
+    {"engine": "tflite", "path": "stateful-accumulator/litert/stateful_accumulator_network_mono.tflite"},
+    {"engine": "litert", "path": "stateful-accumulator/litert/stateful_accumulator_network_mono.tflite", "tensors": {"processed_data": {"name": "output_0"}, "state_out": {"name": "output_1"}}}
   ],
   "inputs": [
     {

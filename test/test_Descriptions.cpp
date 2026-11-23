@@ -34,9 +34,15 @@ bool ends_with(const fs::path& path, const std::string& suffix) {
 
 std::vector<fs::path> files_ending(const std::string& suffix) {
     std::vector<fs::path> files;
-    for (const auto& entry : fs::recursive_directory_iterator(ANIRA_MODELS_SOURCE_DIR)) {
-        if (entry.is_regular_file() && ends_with(entry.path(), suffix)) {
-            files.push_back(entry.path());
+    for (const char* root : {ANIRA_MODELS_SOURCE_DIR, ANIRA_TEST_MODELS_SOURCE_DIR}) {
+        // <root>/<model>/<file>: a model folder's descriptions sit at its top.
+        for (const auto& folder : fs::directory_iterator(root)) {
+            if (!folder.is_directory()) { continue; }
+            for (const auto& entry : fs::directory_iterator(folder.path())) {
+                if (entry.is_regular_file() && ends_with(entry.path(), suffix)) {
+                    files.push_back(entry.path());
+                }
+            }
         }
     }
     return files;
