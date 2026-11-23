@@ -1,0 +1,18 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "onnx/model_q4.onnx"},
+    {"engine": "executorch", "path": "executorch/nemotron_diarization.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/nemotron_diarization_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "input_features", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 104], ["feature", 128]]},
+    {"name": "cached_embeds", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 192], ["feature", 512]]},
+    {"name": "attention_mask", "dtype": "int64", "role": "buffer", "axes": [["batch", 1], ["any", 205]]}
+  ],
+  "outputs": [
+    {"name": "logits", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 1640], ["feature", 8]]},
+    {"name": "chunk_embeds", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 13], ["feature", 512]]},
+    {"name": "silence_embeds", "dtype": "float32", "role": "static", "axes": [["feature", 512]]}
+  ]
+}

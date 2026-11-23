@@ -1,6 +1,6 @@
 {
   "repo": "anira-project/nemotron-3-diarization",
-  "revision": "66319b322023e7cc7065ad6108161d7c252c68e5",
+  "revision": "00b716d694e2802bda8c053c09e34928c4e6cbea",
   "license": "OpenMDW-1.1",
   "files": [
     {"path": "LICENSE.OpenMDW-1.1", "size": 2619, "sha256": "2ab44b68365473c112f5092211a38f231cb23e50de68b75a13369adbd76a74df"},
