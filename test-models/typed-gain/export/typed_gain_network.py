@@ -26,6 +26,7 @@ tensor types and parameters).
 """
 import ctypes
 import os
+import sys
 from typing import Tuple
 
 import numpy as np
@@ -44,6 +45,8 @@ try:
 except ImportError:
     _HAS_EXECUTORCH = False
 
+# paths.py, shared by the four networks, is in test-models/.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 from paths import out_path
 
 GAIN = 2.0

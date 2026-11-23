@@ -18,6 +18,7 @@ three variants of a format are asserted to report identical tensors.
 """
 
 import os
+import sys
 from collections.abc import Callable
 
 import numpy as np
@@ -34,6 +35,8 @@ try:
 except ImportError:
     _HAS_EXECUTORCH = False
 
+# paths.py, shared by the four networks, is in test-models/.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 from paths import out_path
 
 # The variants: the word in the file name and the one weight of the convolution.

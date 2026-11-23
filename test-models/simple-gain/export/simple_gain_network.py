@@ -5,6 +5,7 @@ import onnx
 import onnxruntime as ort
 import tensorflow as tf
 import os
+import sys
 from typing import Tuple
 
 try:
@@ -14,6 +15,8 @@ try:
 except ImportError:
     _HAS_EXECUTORCH = False
 
+# paths.py, shared by the four networks, is in test-models/.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 from paths import out_path
 
 

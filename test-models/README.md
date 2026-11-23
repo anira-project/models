@@ -17,16 +17,20 @@ The weights are in one Hugging Face repository,
 
 ## Regenerating
 
-`export/` is one uv project for all four (torch, ExecuTorch, ONNX, TensorFlow). Each script exports
-its network to TorchScript, ONNX, TFLite and ExecuTorch and checks every runtime against the
-expected values with exact equality; `derived.sh` adds the Core ML ML programs and the ExecuTorch
-programs lowered to Core ML and Vulkan of the float32 networks (`tools/export`). They write to
-`export/out/` (`TEST_MODELS_OUT`), the layout of the Hugging Face repository:
+Each network's script is in its folder (`<network>/export/`); the four share one uv project here
+(`pyproject.toml`: torch, ExecuTorch, ONNX, TensorFlow) and `paths.py`. Each script exports its network
+to TorchScript, ONNX, TFLite and ExecuTorch and checks every runtime against the expected values with
+exact equality; `derived.sh` adds the Core ML ML programs and the ExecuTorch programs lowered to Core ML
+and Vulkan of the float32 networks (`tools/export`). They write to `out/` (`TEST_MODELS_OUT`), the
+layout of the Hugging Face repository:
 
 ```bash
-cd test-models/export
-for s in simple_gain_network multi_function_gain stateful_accumulator_network \
-         typed_gain_network variant_gain_network; do uv run python $s.py; done
+cd test-models
+for s in simple-gain/export/simple_gain_network.py simple-gain/export/multi_function_gain.py \
+         stateful-accumulator/export/stateful_accumulator_network.py \
+         typed-gain/export/typed_gain_network.py variant-gain/export/variant_gain_network.py; do
+    uv run python $s
+done
 ./derived.sh
 ```
 

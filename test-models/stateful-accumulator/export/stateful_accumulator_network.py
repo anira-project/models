@@ -1,4 +1,5 @@
 import os
+import sys
 from collections.abc import Callable
 from typing import NamedTuple
 
@@ -16,6 +17,8 @@ try:
 except ImportError:
     _HAS_EXECUTORCH = False
 
+# paths.py, shared by the four networks, is in test-models/.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 from paths import out_path
 
 # state[0, c, 0] is the running sum of channel c, state[0, c, 1] the block counter.
