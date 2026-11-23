@@ -15,6 +15,10 @@ anira_models_fetch(${PROJECT_SOURCE_DIR}/test-models/simple-gain/test-models.cat
     OUT_DIR _gain_dir
     OUT_FILES _gain_files
     ENGINES onnxruntime)
+# The stateful accumulator too (the same HF repository and revision: the same directory).
+anira_models_fetch(${PROJECT_SOURCE_DIR}/test-models/stateful-accumulator/test-models.catalog.json
+    OUT_DIR _accumulator_dir
+    ENGINES onnxruntime)
 anira_models_embed(models_test_gain_models
     NAMESPACE models_test
     SOURCE_DIR ${_gain_dir}
@@ -26,6 +30,7 @@ add_executable(anira-models-tests
     test_anira.cpp
     test_Descriptions.cpp
     test_Weights.cpp
+    ${PROJECT_SOURCE_DIR}/core/test/test_AsyncHandler.cpp
     ${PROJECT_SOURCE_DIR}/core/test/test_Core.cpp
     ${PROJECT_SOURCE_DIR}/core/test/test_Embed.cpp
 )

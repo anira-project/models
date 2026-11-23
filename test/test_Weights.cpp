@@ -4,14 +4,16 @@
 // engine it names and every provider of it that this anira build has (CPU, Core ML, ...), from the
 // weights of the HF repository its folder's catalog names. An entry pinned to a provider prepares
 // on that provider only. anira checks at prepare that the weights fit the description (names,
-// dtypes, ranks, extents). Opt-in: ANIRA_MODELS_TEST_WEIGHTS is a directory with one folder per
-// HF repository (`<root>/<repo name>/onnx/...`); without it the test skips.
+// dtypes, ranks, extents). A description for the Async contract prepares through
+// core::AsyncHandler until anira's own (M3). Opt-in: ANIRA_MODELS_TEST_WEIGHTS is a directory
+// with one folder per HF repository (`<root>/<repo name>/onnx/...`); without it the test skips.
 
 #include <anira/abi/config.h>
 #include <anira/abi/context.h>
 #include <anira/abi/enums.h>
 #include <anira/abi/handler.h>
 #include <anira/abi/status.h>
+#include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/Model.h>
 #include <anira/models/core/ModelSource.h>
 #include <gtest/gtest.h>
@@ -20,6 +22,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <ios>
@@ -163,15 +166,43 @@ TEST(Weights, EveryDescriptionPreparesOnEveryEngineBuiltIn) {
         if (!ends_with(path, ".model.json")) { continue; }
         const std::string stem =
             path.string().substr(0, path.string().size() - std::string_view(".model.json").size());
-        const fs::path contract_path = stem + ".contract.json";
-        if (!fs::exists(contract_path)) { continue; }
-        anira::ContractHandle contract = anira::ContractHandle::from_json(read_text(contract_path));
-        if (anira_contract_get_kind(contract.native()) != ANIRA_CONTRACT_HARD) {
-            continue;  // the Async contract prepares from anira M3 on
+        // Its own contract, or the folder's one contract that its models share.
+        fs::path contract_path = stem + ".contract.json";
+        if (!fs::exists(contract_path)) {
+            std::vector<fs::path> shared;
+            for (const auto& entry : fs::directory_iterator(path.parent_path())) {
+                if (ends_with(entry.path(), ".contract.json")) { shared.push_back(entry.path()); }
+            }
+            if (shared.size() != 1) { continue; }
+            contract_path = shared.front();
         }
-
+        anira::ContractHandle contract = anira::ContractHandle::from_json(read_text(contract_path));
         const std::string text = read_text(path);
         const auto description = nlohmann::json::parse(text);
+        if (anira_contract_get_kind(contract.native()) == ANIRA_CONTRACT_ASYNC) {
+            // Until anira's Async contract (M3): core::AsyncHandler, on every engine of this build.
+            const std::map<std::string, std::string> repos = repo_of_weights(path.parent_path());
+            for (const auto& model_entry : description.at("models")) {
+                const anira_engine engine = engine_named(model_entry.at("engine").get<std::string>());
+                if (!providers.contains(static_cast<uint32_t>(engine))) { continue; }
+                const auto weight = model_entry.at("path").get<std::string>();
+                const fs::path weights_dir = fs::path(root) / repos.at(weight);
+                if (!fs::exists(weights_dir / weight)) {
+                    ADD_FAILURE() << path << ": " << (weights_dir / weight) << " is missing";
+                    break;
+                }
+                try {
+                    core::AsyncHandler handler(
+                        context, text, core::ModelSource::directory(weights_dir));
+                    handler.prepare(anira::Async{});
+                    ++prepared;
+                } catch (const std::exception& error) {
+                    ADD_FAILURE() << path.filename() << ": " << error.what();
+                }
+                break;
+            }
+            continue;
+        }
         const int64_t block = host_block(description);
         contract.hard_host_blocks(static_cast<double>(block), static_cast<double>(block), k_rate);
         const std::map<std::string, std::string> repos = repo_of_weights(path.parent_path());
