@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <sstream>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -87,9 +89,15 @@ Vocabulary::Vocabulary(std::vector<std::string> tokens) : m_tokens(std::move(tok
 Vocabulary Vocabulary::load(const std::filesystem::path& path) {
     std::ifstream file(path);
     if (!file) { throw std::runtime_error("Vocabulary: cannot open " + path.string()); }
+    const std::string text{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    return parse(text, path.string());
+}
+
+Vocabulary Vocabulary::parse(std::string_view text, const std::string& what) {
     std::vector<std::string> tokens;
+    std::istringstream lines{std::string(text)};
     std::string line;
-    while (std::getline(file, line)) {
+    while (std::getline(lines, line)) {
         if (!line.empty() && line.back() == '\r') { line.pop_back(); }
         const auto separator = line.rfind(' ');
         std::size_t id = 0;
@@ -101,11 +109,11 @@ Vocabulary Vocabulary::load(const std::filesystem::path& path) {
         }();
         if (!well_formed || id != tokens.size()) {
             throw std::runtime_error("Vocabulary: malformed line " +
-                                     std::to_string(tokens.size() + 1) + " in " + path.string());
+                                     std::to_string(tokens.size() + 1) + " in " + what);
         }
         tokens.push_back(line.substr(0, separator));
     }
-    if (tokens.empty()) { throw std::runtime_error("Vocabulary: " + path.string() + " is empty"); }
+    if (tokens.empty()) { throw std::runtime_error("Vocabulary: " + what + " is empty"); }
     return Vocabulary(std::move(tokens));
 }
 

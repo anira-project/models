@@ -1,0 +1,16 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "encoder-model.q4.onnx"},
+    {"engine": "executorch", "path": "executorch/encoder.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/encoder_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "audio_signal", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 128], ["any", 3101]]},
+    {"name": "length", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ],
+  "outputs": [
+    {"name": "outputs", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 1024], ["any", 388]]},
+    {"name": "encoded_lengths", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "nemo128.onnx"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "waveforms", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 64000]]},
+    {"name": "waveforms_lens", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ],
+  "outputs": [
+    {"name": "features", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 128], ["any", 401]]},
+    {"name": "features_lens", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ]
+}

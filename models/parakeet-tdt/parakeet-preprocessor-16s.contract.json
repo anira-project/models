@@ -1,0 +1,3 @@
+{
+  "async": { "on_late": "finish" }
+}

@@ -73,7 +73,7 @@ private:
 /// Until then the inside is anira's Hard contract: the constructor rewrites a copy of the
 /// description, every Buffer tensor a Streamed one flattened onto its Time axis (one window = the
 /// whole tensor; the workshop's way); prepare derives the Hard contract (one window per push, the
-/// deadline as the budget, zeros on a miss, every output's latency 0); a worker thread per lane,
+/// deadline as the budget, zeros on a miss, every output's latency 0, no warm-up); a worker thread per lane,
 /// each with a handler of its own, pushes a job and waits for its outputs: without limit under
 /// on_late finish (never misses), until the deadline under on_late drop (a job not done by then
 /// is dropped and its outputs are zeros; anira delivers no late block afterwards, so the stream

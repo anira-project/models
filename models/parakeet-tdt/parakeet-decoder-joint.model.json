@@ -1,0 +1,21 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "decoder_joint-model.int8.onnx"},
+    {"engine": "executorch", "path": "executorch/decoder_joint.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/decoder_joint_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "encoder_outputs", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 1024], ["any", 1]]},
+    {"name": "targets", "dtype": "int32", "role": "buffer", "axes": [["batch", 1], ["any", 1]]},
+    {"name": "target_length", "dtype": "int32", "role": "static", "axes": [["any", 1]]},
+    {"name": "input_states_1", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]},
+    {"name": "input_states_2", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]}
+  ],
+  "outputs": [
+    {"name": "outputs", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 1], ["any", 1], ["feature", 8198]]},
+    {"name": "prednet_lengths", "dtype": "int32", "role": "static", "axes": [["any", 1]]},
+    {"name": "output_states_1", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]},
+    {"name": "output_states_2", "dtype": "float32", "role": "buffer", "axes": [["any", 2], ["batch", 1], ["feature", 640]]}
+  ]
+}

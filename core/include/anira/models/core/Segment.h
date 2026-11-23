@@ -8,10 +8,8 @@
 
 namespace anira::models::core {
 
-/// Sample rate of all positions in Word and Segment.
-inline constexpr std::int64_t k_segment_sample_rate = 16000;
-
-/// One word of a segment; positions in 16 kHz samples since the engine's last reset().
+/// One word of a segment; positions in samples of the caller's audio (its rate; the wrapper that
+/// delivers it says from when on).
 struct Word {
     std::string m_text;
     std::int64_t m_start_sample = 0;

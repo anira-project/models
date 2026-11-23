@@ -145,6 +145,7 @@ TEST(Moonshine, StreamsRevisionsAndTheFinalTextAt48k) {
     }
     EXPECT_EQ(moonshine.latest().m_text, last.m_text);
     EXPECT_EQ(moonshine.dropped_audio(), 0U);
+    EXPECT_EQ(moonshine.failed(), 0U);
 }
 
 TEST(Moonshine, RunTranscribesALongRecordingInSegments) {

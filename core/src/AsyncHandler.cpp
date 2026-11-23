@@ -196,6 +196,9 @@ AsyncHandler::AsyncHandler(anira::Context& context,
     description["anchor"] = *anchor;
     m_hard_json = description.dump();
     m_model = load_model(m_hard_json, weights);
+    // A lane runs one job at a time: one loaded model per lane, not one per thread of anira's pool
+    // (a stateless model's default).
+    m_model.max_instances(1);
 }
 
 AsyncHandler::~AsyncHandler() { stop(); }
@@ -241,8 +244,9 @@ anira::PlanReport AsyncHandler::prepare(const anira::Async& contract) {
         std::chrono::duration_cast<std::chrono::nanoseconds>(budget).count());
     hard.host_rate = anchor_window * jobs_per_second;
     hard.budget = budget;
-    hard.warmup = ANIRA_WARMUP_FIXED;
-    hard.warmup_iterations = 1;
+    // No warm-up pass: jobs have no real-time budget to measure, and a large model's cold first
+    // inference would outlast anira's warm-up limit (10 s); the first job pays it instead.
+    hard.warmup = ANIRA_WARMUP_NONE;
     hard.on_miss = ANIRA_MISS_ZEROS;
     const auto description = nlohmann::json::parse(m_hard_json);
     for (std::size_t i = 0; i < m_outputs.size(); ++i) {
@@ -362,7 +366,15 @@ void AsyncHandler::execute(anira::InferenceHandler& handler, Job& job) noexcept 
             pushed[i] = job.m_inputs[i];
         }
     }
-    anira_status status = handler.push_data(std::span<const anira::Tensor>(pushed.data(), m_inputs.size()));
+    // anira frees a job's entry just after its result is popped: a push right behind it may find
+    // none free yet. The worker is no real-time thread: it retries for a while.
+    const std::span<const anira::Tensor> push(pushed.data(), m_inputs.size());
+    anira_status status = handler.push_data(push);
+    const auto give_up = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (status == ANIRA_ERROR_CAPACITY && std::chrono::steady_clock::now() < give_up) {
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
+        status = handler.push_data(push);
+    }
     if (ANIRA_FAILED(status)) {
         job.m_error = status;
         job.m_status.store(TicketStatus::Failed, std::memory_order_release);

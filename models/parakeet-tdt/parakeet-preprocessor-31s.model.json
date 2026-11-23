@@ -1,0 +1,16 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "nemo128.onnx"},
+    {"engine": "executorch", "path": "executorch/preprocessor.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/preprocessor_coreml.pte"}
+  ],
+  "state": "stateless",
+  "inputs": [
+    {"name": "waveforms", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 496000]]},
+    {"name": "waveforms_lens", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ],
+  "outputs": [
+    {"name": "features", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["feature", 128], ["any", 3101]]},
+    {"name": "features_lens", "dtype": "int64", "role": "static", "axes": [["any", 1]]}
+  ]
+}

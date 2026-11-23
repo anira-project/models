@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <span>
 #include <thread>
 #include <vector>
@@ -114,12 +115,19 @@ void Moonshine::decode_loop() {
             std::this_thread::sleep_for(k_poll);
             continue;
         }
-        for (std::size_t i = 0; i < block.m_count; ++i) {
-            m_step[m_step_fill++] = block.m_samples[i];
-            ++m_model_samples;
-            if (m_step_fill == k_step) { step(false); }
+        try {
+            for (std::size_t i = 0; i < block.m_count; ++i) {
+                m_step[m_step_fill++] = block.m_samples[i];
+                ++m_model_samples;
+                if (m_step_fill == k_step) { step(false); }
+            }
+            if (block.m_end && (m_in_segment || m_step_fill > 0)) { step(true); }
+        } catch (const std::exception&) {
+            // A failed job: this segment is lost, the next starts clean.
+            m_failed.fetch_add(1, std::memory_order_relaxed);
+            m_step_fill = 0;
+            m_in_segment = false;
         }
-        if (block.m_end && (m_in_segment || m_step_fill > 0)) { step(true); }
         m_taken.fetch_add(1, std::memory_order_release);
     }
 }

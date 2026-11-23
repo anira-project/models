@@ -21,6 +21,8 @@ public:
     /// Reads a "<token> <id>" per line file (scripts/export-parakeet writes vocab.txt).
     /// Throws std::runtime_error if the file is missing, malformed or ids are not 0..n-1.
     [[nodiscard]] static Vocabulary load(const std::filesystem::path& path);
+    /// The same from the file's text (`what` names it in errors).
+    [[nodiscard]] static Vocabulary parse(std::string_view text, const std::string& what = "vocab.txt");
     /// Reads a one-token-per-line file, the id being the line number from 0 (the
     /// onnx-community Nemotron vocab.txt). Throws std::runtime_error if missing or empty.
     [[nodiscard]] static Vocabulary load_lines(const std::filesystem::path& path);

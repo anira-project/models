@@ -77,7 +77,7 @@ def onnx_runner():
     import onnxruntime
     root = os.path.dirname(HERE)
     sessions = {"preprocessor": onnxruntime.InferenceSession(f"{root}/nemo128.onnx"),
-                "encoder": onnxruntime.InferenceSession(f"{root}/encoder-model.int8.onnx"),
+                "encoder": onnxruntime.InferenceSession(f"{root}/encoder-model.q4.onnx"),
                 "decoder_joint": onnxruntime.InferenceSession(f"{root}/decoder_joint-model.int8.onnx")}
 
     def runner(session):

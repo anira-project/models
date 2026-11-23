@@ -62,6 +62,8 @@ public:
     [[nodiscard]] std::size_t dropped() const noexcept { return m_dropped.load(); }
     /// Model samples the audio thread could not queue.
     [[nodiscard]] std::size_t dropped_audio() const noexcept { return m_dropped_audio.load(); }
+    /// Segments lost to a failed job (anira's error; the next segment starts clean).
+    [[nodiscard]] std::size_t failed() const noexcept { return m_failed.load(); }
     /// Whether the decoder has taken every queued block (for tests and offline use).
     [[nodiscard]] bool idle() const noexcept;
 
@@ -98,6 +100,7 @@ private:
     core::Latest<core::Segment> m_latest;
     std::atomic<std::size_t> m_dropped{0};
     std::atomic<std::size_t> m_dropped_audio{0};
+    std::atomic<std::size_t> m_failed{0};
     std::atomic<std::uint64_t> m_queued{0};
     std::atomic<std::uint64_t> m_taken{0};
 
