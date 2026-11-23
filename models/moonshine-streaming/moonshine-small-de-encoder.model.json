@@ -1,0 +1,23 @@
+{
+  "models": [
+    {"engine": "onnxruntime", "path": "small-de/encoder.onnx"},
+    {"engine": "executorch", "path": "small-de/executorch/encoder.pte"},
+    {"engine": "executorch", "provider": "coreml", "path": "small-de/executorch/encoder_coreml.pte"}
+  ],
+  "state": "stateful",
+  "inputs": [
+    {"name": "audio", "dtype": "float32", "role": "buffer", "axes": [["batch", 1], ["any", 8000]]},
+    {"name": "conv1_buffer", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["feature", 620], ["any", 4]], "state_source": "conv1_buffer_out"},
+    {"name": "conv2_buffer", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["feature", 1240], ["any", 4]], "state_source": "conv2_buffer_out"},
+    {"name": "features", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 176], ["feature", 620]], "state_source": "features_out"},
+    {"name": "position", "dtype": "int32", "role": "static", "axes": [["any", 1]]},
+    {"name": "length", "dtype": "int32", "role": "static", "axes": [["any", 1]]}
+  ],
+  "outputs": [
+    {"name": "k_cross", "dtype": "float32", "role": "buffer", "axes": [["any", 10], ["batch", 1], ["any", 8], ["any", 25], ["feature", 64]]},
+    {"name": "v_cross", "dtype": "float32", "role": "buffer", "axes": [["any", 10], ["batch", 1], ["any", 8], ["any", 25], ["feature", 64]]},
+    {"name": "conv1_buffer_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["feature", 620], ["any", 4]]},
+    {"name": "conv2_buffer_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["feature", 1240], ["any", 4]]},
+    {"name": "features_out", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 176], ["feature", 620]]}
+  ]
+}
