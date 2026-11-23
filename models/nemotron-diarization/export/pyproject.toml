@@ -1,0 +1,17 @@
+[project]
+name = "nemotron-diarization-export"
+version = "0"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "transformers>=5.18",
+    "torch==2.12.0",
+    "executorch==1.3.1",
+    "coremltools==9.0",
+    "onnxruntime",
+    "numpy",
+    "soundfile",
+    "librosa",
+]
+
+[tool.uv]
+package = false
