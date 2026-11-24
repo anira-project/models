@@ -6,6 +6,7 @@
 // thread's way); two hands; no hands in an empty frame. The
 // tests need ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer; without it they skip.
 
+#include <anira/anira.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/handtracking/Decode.h>
 #include <anira/models/handtracking/HandTracker.h>
@@ -20,6 +21,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <memory>
 #include <optional>
 #include <string>
@@ -36,7 +38,7 @@ namespace {
 std::optional<fs::path> weights_dir() {
     const char* root = std::getenv("ANIRA_MODELS_TEST_WEIGHTS");
     if (root == nullptr) { return std::nullopt; }
-    const fs::path dir = fs::path(root) / "mediapipe-gesture-recognizer";
+    fs::path dir = fs::path(root) / "mediapipe-gesture-recognizer";
     if (!fs::exists(dir / "test")) { return std::nullopt; }
     return dir;
 }
@@ -50,9 +52,10 @@ ht::Frame read_ppm(const fs::path& path) {
     int max_value = 0;
     file >> magic >> width >> height >> max_value;
     file.get();
-    auto pixels = std::make_shared<std::vector<std::uint8_t>>(
-        static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 3);
-    file.read(reinterpret_cast<char*>(pixels->data()), static_cast<std::streamsize>(pixels->size()));
+    auto pixels = std::make_shared<std::vector<std::uint8_t>>(static_cast<std::size_t>(width) *
+                                                              static_cast<std::size_t>(height) * 3);
+    file.read(reinterpret_cast<char*>(pixels->data()),
+              static_cast<std::streamsize>(pixels->size()));
     return {.m_pixels = pixels->data(),
             .m_width = width,
             .m_height = height,
@@ -88,7 +91,9 @@ constexpr float k_wrist_tolerance = 0.03F;
 
 TEST(HandTracker, RunFindsEachImagesGesture) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing";
+    }
     anira::Context context{anira::ContextConfig{}};
     for (const Case& c : k_cases) {
         const ht::Frame frame = read_ppm(*dir / "test" / (std::string(c.m_image) + ".ppm"));
@@ -97,24 +102,31 @@ TEST(HandTracker, RunFindsEachImagesGesture) {
         ASSERT_GE(hands.m_count, 1U) << c.m_image;
         EXPECT_GT(hands.m_hands[0].m_presence, 0.5F) << c.m_image;
         EXPECT_EQ(gesture_of(hands), c.m_gesture) << c.m_image;
-        EXPECT_NEAR(hands.m_hands[0].m_landmarks[0].m_x, c.m_wrist.m_x, k_wrist_tolerance) << c.m_image;
-        EXPECT_NEAR(hands.m_hands[0].m_landmarks[0].m_y, c.m_wrist.m_y, k_wrist_tolerance) << c.m_image;
+        EXPECT_NEAR(hands.m_hands[0].m_landmarks[0].m_x, c.m_wrist.m_x, k_wrist_tolerance)
+            << c.m_image;
+        EXPECT_NEAR(hands.m_hands[0].m_landmarks[0].m_y, c.m_wrist.m_y, k_wrist_tolerance)
+            << c.m_image;
         EXPECT_GT(hands.m_hands[0].m_handedness_right, 0.5F) << c.m_image;  // MediaPipe: Right
     }
 }
 
 TEST(HandTracker, RunFindsTwoHands) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing";
+    }
     anira::Context context{anira::ContextConfig{}};
     const ht::Frame frame = read_ppm(*dir / "test" / "right_hands.ppm");
-    const ht::Hands hands = ht::HandTracker::run(context, core::ModelSource::directory(*dir), frame);
+    const ht::Hands hands =
+        ht::HandTracker::run(context, core::ModelSource::directory(*dir), frame);
     EXPECT_EQ(hands.m_count, 2U);
 }
 
 TEST(HandTracker, StreamedFramesGiveTheGestureAndEveryFrame) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing";
+    }
     anira::Context context{anira::ContextConfig{}};
     ht::HandTracker tracker(context, core::ModelSource::directory(*dir));
     tracker.prepare();
@@ -126,9 +138,7 @@ TEST(HandTracker, StreamedFramesGiveTheGestureAndEveryFrame) {
     }
     ht::Hands hands;
     std::int64_t expected = 0;
-    while (tracker.pop(hands)) {
-        EXPECT_EQ(hands.m_frame, expected++);
-    }
+    while (tracker.pop(hands)) { EXPECT_EQ(hands.m_frame, expected++); }
     EXPECT_EQ(expected, k_frames);
     EXPECT_EQ(tracker.dropped(), 0U);
     const ht::Hands last = tracker.latest();
@@ -138,7 +148,9 @@ TEST(HandTracker, StreamedFramesGiveTheGestureAndEveryFrame) {
 
 TEST(HandTracker, AnEmptyFrameHasNoHands) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/mediapipe-gesture-recognizer/test is missing";
+    }
     anira::Context context{anira::ContextConfig{}};
     auto pixels = std::make_shared<std::vector<std::uint8_t>>(640 * 480 * 3, std::uint8_t{40});
     const ht::Frame frame{.m_pixels = pixels->data(),
@@ -148,6 +160,7 @@ TEST(HandTracker, AnEmptyFrameHasNoHands) {
                           .m_pixel_stride = 3,
                           .m_format = ht::PixelFormat::Rgb,
                           .m_keep_alive = pixels};
-    const ht::Hands hands = ht::HandTracker::run(context, core::ModelSource::directory(*dir), frame);
+    const ht::Hands hands =
+        ht::HandTracker::run(context, core::ModelSource::directory(*dir), frame);
     EXPECT_EQ(hands.m_count, 0U);
 }

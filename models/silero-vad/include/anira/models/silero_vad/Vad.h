@@ -36,7 +36,8 @@ public:
     anira::PlanReport prepare(double sample_rate, std::size_t max_block, std::size_t min_block = 1);
     /// Online with every contract field the caller's.
     anira::PlanReport prepare(const anira::Hard& host);
-    /// A new stream: the clock, the model's state, the segments and the queues start over.
+    /// Neither process() nor the reader running: a new stream (the clock, the model's state, the
+    /// segments and the queues start over).
     void reset();
 
     /// Audio thread. `in`: [channels, n] or [n] float host audio (downmixed); `probability`, when

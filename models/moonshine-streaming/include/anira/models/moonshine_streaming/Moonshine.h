@@ -28,14 +28,17 @@ namespace anira::models::moonshine_streaming {
 ///
 ///   - Audio thread: process(audio) never waits (downmixed, resampled to 16 kHz, queued);
 ///     end_segment() after the segment's last block.
-///   - Decoding: a thread of the wrapper's own runs the encoder and the token loop (each step a job,
+///   - Decoding: a thread of the wrapper's own runs the encoder and the token loop (each step a
+///   job,
 ///     core::AsyncHandler).
 ///   - Reader thread: pop(segment) gives every revision in order, latest() the newest; positions in
 ///     host samples since reset().
 ///   - Offline: run() (segments cut at the limit).
 class Moonshine {
 public:
-    Moonshine(anira::Context& context, const core::ModelSource& weights, Variant variant = Variant::TinyEn);
+    Moonshine(anira::Context& context,
+              const core::ModelSource& weights,
+              Variant variant = Variant::TinyEn);
     ~Moonshine();
     Moonshine(const Moonshine&) = delete;
     Moonshine& operator=(const Moonshine&) = delete;
@@ -44,8 +47,8 @@ public:
 
     /// Main thread, no process() running: the host's rate and largest block; starts decoding.
     void prepare(double sample_rate, std::size_t max_block);
-    /// Main thread, no process() running: a new stream (the clock, the segment and the queues start
-    /// over).
+    /// Main thread, neither process() nor the reader running: a new stream (the clock, the
+    /// segment and the queues start over).
     void reset();
 
     /// Audio thread. ANIRA_ERROR_CAPACITY when the decoder fell so far behind that audio was lost
@@ -55,9 +58,9 @@ public:
     void end_segment() noexcept;
 
     /// Reader thread: the oldest revision not taken yet.
-    bool pop(core::Segment& segment) noexcept { return m_segments.pop(segment); }
+    bool pop(core::Segment& segment) { return m_segments.pop(segment); }
     /// Reader thread (one): the newest revision.
-    [[nodiscard]] core::Segment latest() noexcept { return m_latest.read(); }
+    [[nodiscard]] core::Segment latest() { return m_latest.read(); }
     /// Revisions the reader did not take in time.
     [[nodiscard]] std::size_t dropped() const noexcept { return m_dropped.load(); }
     /// Model samples the audio thread could not queue.

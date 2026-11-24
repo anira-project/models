@@ -29,10 +29,11 @@ struct Window {
     std::size_t m_mel_frames;
     std::size_t m_encoder_frames;  ///< 80 ms each
 };
-inline constexpr std::array<Window, 4> k_windows{{{4, 64000, 401, 51},
-                                                  {8, 128000, 801, 101},
-                                                  {16, 256000, 1601, 201},
-                                                  {31, 496000, 3101, 388}}};
+inline constexpr std::array<Window, 4> k_windows{
+    {{.m_seconds = 4, .m_samples = 64000, .m_mel_frames = 401, .m_encoder_frames = 51},
+     {.m_seconds = 8, .m_samples = 128000, .m_mel_frames = 801, .m_encoder_frames = 101},
+     {.m_seconds = 16, .m_samples = 256000, .m_mel_frames = 1601, .m_encoder_frames = 201},
+     {.m_seconds = 31, .m_samples = 496000, .m_mel_frames = 3101, .m_encoder_frames = 388}}};
 /// The longest segment: the largest window.
 inline constexpr std::size_t k_max_samples = k_windows.back().m_samples;
 
@@ -55,7 +56,9 @@ public:
 
     /// One segment of 16 kHz audio, at most k_max_samples: its final text and words, positions in
     /// 16 kHz samples from `start_sample` on. Throws Error for a segment too long or a failed job.
-    core::Segment transcribe(std::span<const float> audio, std::int64_t start_sample = 0, std::uint64_t id = 0);
+    core::Segment transcribe(std::span<const float> audio,
+                             std::int64_t start_sample = 0,
+                             std::uint64_t id = 0);
 
     /// A recording at any rate, in segments of at most 31 s (cut there, without regard to words):
     /// the final segments, positions in the recording's samples.

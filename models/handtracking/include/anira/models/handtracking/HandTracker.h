@@ -24,21 +24,21 @@ namespace anira::models::handtracking {
 
 /// MediaPipe's GestureRecognizerOptions.
 struct Options {
-    int m_num_hands = 2;                         ///< 1 .. k_max_hands
+    int m_num_hands = 2;                           ///< 1 .. k_max_hands
     float m_min_hand_detection_confidence = 0.5F;  ///< the palm detector's score
     float m_min_hand_presence_confidence = 0.5F;   ///< the landmark model's presence
     float m_min_tracking_confidence = 0.5F;        ///< IoU of a detection with a tracked hand
 };
 
 struct Hand {
-    int m_slot = 0;          ///< stable while the hand is tracked
+    int m_slot = 0;           ///< stable while the hand is tracked
     bool m_tracking = false;  ///< its region came from the last landmarks, not the detector
     float m_presence = 0.0F;
     float m_handedness_right = 0.0F;  ///< the probability that it is a right hand
     int m_gesture = -1;               ///< index into k_gesture_labels, -1: none
     float m_gesture_score = 0.0F;
     std::array<Vec2, k_num_landmarks> m_landmarks{};  ///< normalised frame coordinates
-    std::array<Vec2, 4> m_roi_corners{};               ///< normalised frame coordinates
+    std::array<Vec2, 4> m_roi_corners{};              ///< normalised frame coordinates
 };
 
 /// The hands of one frame. Trivially copyable: no reference to the frame.
@@ -72,7 +72,8 @@ public:
     /// (a job not done by then is dropped; nullopt: none). The plans of the landmark model.
     anira::PlanReport prepare(
         std::optional<std::chrono::nanoseconds> deadline = std::chrono::milliseconds(200));
-    /// A new stream: no hands, the frame index from 0, the queue empty.
+    /// The reader not running (waits for the frame in flight): a new stream (no hands, the frame
+    /// index from 0, the queue empty).
     void reset();
     /// Any thread; takes effect with the next frame.
     void set_options(const Options& options) noexcept;

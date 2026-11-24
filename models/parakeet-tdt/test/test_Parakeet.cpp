@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// Parakeet TDT 0.6B v3 (ONNX: the 4-bit encoder, the int8 decoder) on Moonshine's test recording (two_cities_16k.wav, a LibriVox
-// reading, public domain), in test/ of the weights' HF repository: a short segment in the smallest
-// window, the whole recording in segments, the words' times. The tests need
-// ANIRA_MODELS_TEST_WEIGHTS/parakeet-tdt-0.6b-v3 with its ONNX files and test/; without it they
-// skip.
+// Parakeet TDT 0.6B v3 (ONNX: the 4-bit encoder, the int8 decoder) on Moonshine's test recording
+// (two_cities_16k.wav, a LibriVox reading, public domain), in test/ of the weights' HF repository:
+// a short segment in the smallest window, the whole recording in segments, the words' times. The
+// tests need ANIRA_MODELS_TEST_WEIGHTS/parakeet-tdt-0.6b-v3 with its ONNX files and test/; without
+// it they skip.
 
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
@@ -20,6 +20,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -36,13 +37,16 @@ std::optional<fs::path> weights_dir() {
     const char* root = std::getenv("ANIRA_MODELS_TEST_WEIGHTS");
     if (root == nullptr) { return std::nullopt; }
     fs::path dir = fs::path(root) / "parakeet-tdt-0.6b-v3";
-    if (!fs::exists(dir / "test") || !fs::exists(dir / "encoder-model.q4.onnx")) { return std::nullopt; }
+    if (!fs::exists(dir / "test") || !fs::exists(dir / "encoder-model.q4.onnx")) {
+        return std::nullopt;
+    }
     return dir;
 }
 
 std::vector<float> read_wav(const fs::path& path) {
     std::ifstream file(path, std::ios::binary);
-    const std::vector<char> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    const std::vector<char> bytes{std::istreambuf_iterator<char>(file),
+                                  std::istreambuf_iterator<char>()};
     std::size_t offset = 12;
     while (offset + 8 <= bytes.size()) {
         std::uint32_t size = 0;
@@ -72,7 +76,7 @@ TEST(Parakeet, ASegmentHasItsTextAndWordsInOrder) {
     const auto dir = weights_dir();
     if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/parakeet-tdt-0.6b-v3 is missing"; }
     std::vector<float> audio = read_wav(*dir / "test" / "two_cities_16k.wav");
-    audio.resize(7 * 16000);  // 7 s: the 8 s window
+    audio.resize(std::size_t{7} * 16000);  // 7 s: the 8 s window
     anira::Context context{anira::ContextConfig{}};
     pt::Parakeet parakeet(context, core::ModelSource::directory(*dir));
     parakeet.prepare();

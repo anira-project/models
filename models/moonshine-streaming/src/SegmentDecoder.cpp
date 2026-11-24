@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/Error.h>
 #include <anira/models/core/ModelSource.h>
@@ -16,9 +17,11 @@
 #include <initializer_list>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace anira::models::moonshine_streaming {
@@ -26,8 +29,9 @@ namespace anira::models::moonshine_streaming {
 namespace {
 
 anira::Tensor host(void* data, anira_dtype dtype, std::initializer_list<std::int64_t> shape) {
-    return anira::Tensor::from_host(
-        data, dtype, std::span<const std::int64_t>(shape.begin(), shape.size()));
+    return anira::Tensor::from_host(data,
+                                    dtype,
+                                    std::span<const std::int64_t>(shape.begin(), shape.size()));
 }
 
 anira::Tensor none(anira_dtype dtype) {
@@ -45,31 +49,39 @@ struct Graphs {
 Graphs graphs_of(Variant variant) {
     switch (variant) {
         case Variant::TinyEn:
-            return {k_moonshine_tiny_en_encoder_model_json, k_moonshine_tiny_en_decoder_model_json};
+            return {.m_encoder = k_moonshine_tiny_en_encoder_model_json,
+                    .m_decoder = k_moonshine_tiny_en_decoder_model_json};
         case Variant::SmallEn:
-            return {k_moonshine_small_en_encoder_model_json, k_moonshine_small_en_decoder_model_json};
+            return {.m_encoder = k_moonshine_small_en_encoder_model_json,
+                    .m_decoder = k_moonshine_small_en_decoder_model_json};
         case Variant::TinyDe:
-            return {k_moonshine_tiny_de_encoder_model_json, k_moonshine_tiny_de_decoder_model_json};
+            return {.m_encoder = k_moonshine_tiny_de_encoder_model_json,
+                    .m_decoder = k_moonshine_tiny_de_decoder_model_json};
         case Variant::SmallDe:
-            return {k_moonshine_small_de_encoder_model_json, k_moonshine_small_de_decoder_model_json};
+            return {.m_encoder = k_moonshine_small_de_encoder_model_json,
+                    .m_decoder = k_moonshine_small_de_decoder_model_json};
     }
     return {};
 }
 
 // The extents of a tensor of a description.
-std::vector<std::int64_t> extents(std::string_view description, const char* side, const char* name) {
+std::vector<std::int64_t> extents(std::string_view description,
+                                  const char* side,
+                                  const char* name) {
     const auto json = nlohmann::json::parse(description);
     for (const auto& tensor : json.at(side)) {
         if (tensor.at("name") == name) {
             std::vector<std::int64_t> out;
-            for (const auto& axis : tensor.at("axes")) { out.push_back(axis.at(1).get<std::int64_t>()); }
+            for (const auto& axis : tensor.at("axes")) {
+                out.push_back(axis.at(1).get<std::int64_t>());
+            }
             return out;
         }
     }
     throw Error(std::string("Moonshine: no tensor ") + name);
 }
 
-std::string trim(std::string text) {
+std::string trim(const std::string& text) {
     const auto first = text.find_first_not_of(' ');
     if (first == std::string::npos) { return {}; }
     const auto last = text.find_last_not_of(' ');
@@ -125,7 +137,7 @@ std::string Tokenizer::text(std::span<const std::int32_t> tokens) const {
             text += joined[i++];
         }
     }
-    return trim(std::move(text));
+    return trim(text);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -170,7 +182,8 @@ void SegmentDecoder::prepare() {
     m_encoder->bind_output(1, host(m_v_new.data(), ANIRA_DTYPE_F32, {l, 1, h, k_chunk, k}));
     m_decoder->prepare(anira::Async{.max_in_flight = 1});
     m_decoder->bind_output(
-        0, host(m_logits.data(), ANIRA_DTYPE_F32, {1, static_cast<std::int64_t>(m_vocab)}));
+        0,
+        host(m_logits.data(), ANIRA_DTYPE_F32, {1, static_cast<std::int64_t>(m_vocab)}));
     m_decoder->bind_output(1, host(m_k_token.data(), ANIRA_DTYPE_F32, {l, 1, h, 1, k}));
     m_decoder->bind_output(2, host(m_v_token.data(), ANIRA_DTYPE_F32, {l, 1, h, 1, k}));
     begin();
@@ -187,7 +200,8 @@ void SegmentDecoder::begin() {
 bool SegmentDecoder::push(std::span<const float> step) {
     if (steps() >= k_max_steps || step.size() != k_step) { return false; }
     m_frames += k_chunk;
-    encode(step, static_cast<std::int32_t>(m_frames) - static_cast<std::int32_t>(k_chunk + k_lookahead));
+    encode(step,
+           static_cast<std::int32_t>(m_frames) - static_cast<std::int32_t>(k_chunk + k_lookahead));
     return true;
 }
 
@@ -214,16 +228,18 @@ void SegmentDecoder::encode(std::span<const float> samples, std::int32_t positio
     // The frames that became final, in order, into the memory.
     for (std::size_t j = 0; j < k_chunk; ++j) {
         const std::int64_t frame = position + static_cast<std::int64_t>(j);
-        if (frame < 0 || frame >= static_cast<std::int64_t>(m_frames) ||
-            frame != static_cast<std::int64_t>(m_memory) || m_memory >= k_memory) {
+        if (frame < 0 || std::cmp_greater_equal(frame, m_frames) ||
+            std::cmp_not_equal(frame, m_memory) || m_memory >= k_memory) {
             continue;
         }
         for (std::size_t lane = 0; lane < m_layers * m_heads; ++lane) {
             const std::size_t from = ((lane * k_chunk) + j) * m_head_dim;
             const std::size_t to = ((lane * k_memory) + m_memory) * m_head_dim;
-            std::copy_n(m_k_new.begin() + static_cast<std::ptrdiff_t>(from), m_head_dim,
+            std::copy_n(m_k_new.begin() + static_cast<std::ptrdiff_t>(from),
+                        m_head_dim,
                         m_k_cross.begin() + static_cast<std::ptrdiff_t>(to));
-            std::copy_n(m_v_new.begin() + static_cast<std::ptrdiff_t>(from), m_head_dim,
+            std::copy_n(m_v_new.begin() + static_cast<std::ptrdiff_t>(from),
+                        m_head_dim,
                         m_v_cross.begin() + static_cast<std::ptrdiff_t>(to));
         }
         ++m_memory;
@@ -231,8 +247,9 @@ void SegmentDecoder::encode(std::span<const float> samples, std::int32_t positio
 }
 
 std::vector<std::int32_t> SegmentDecoder::decode(double seconds) {
-    const auto limit = std::min<std::size_t>(
-        static_cast<std::size_t>(std::ceil(seconds * k_tokens_per_second)), k_tokens - 1);
+    const auto limit =
+        std::min<std::size_t>(static_cast<std::size_t>(std::ceil(seconds * k_tokens_per_second)),
+                              k_tokens - 1);
     const auto l = static_cast<std::int64_t>(m_layers);
     const auto h = static_cast<std::int64_t>(m_heads);
     const auto k = static_cast<std::int64_t>(m_head_dim);
@@ -257,9 +274,11 @@ std::vector<std::int32_t> SegmentDecoder::decode(double seconds) {
         }
         for (std::size_t lane = 0; lane < m_layers * m_heads; ++lane) {
             const std::size_t to = ((lane * k_tokens) + position) * m_head_dim;
-            std::copy_n(m_k_token.begin() + static_cast<std::ptrdiff_t>(lane * m_head_dim), m_head_dim,
+            std::copy_n(m_k_token.begin() + static_cast<std::ptrdiff_t>(lane * m_head_dim),
+                        m_head_dim,
                         m_k_self.begin() + static_cast<std::ptrdiff_t>(to));
-            std::copy_n(m_v_token.begin() + static_cast<std::ptrdiff_t>(lane * m_head_dim), m_head_dim,
+            std::copy_n(m_v_token.begin() + static_cast<std::ptrdiff_t>(lane * m_head_dim),
+                        m_head_dim,
                         m_v_self.begin() + static_cast<std::ptrdiff_t>(to));
         }
         const auto best = std::ranges::max_element(m_logits) - m_logits.begin();

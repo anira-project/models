@@ -5,8 +5,8 @@ decoder_joint over every step of the greedy search with its state fed back; the 
 
     uv run check.py <audio.wav>...      checks the ONNX export in this repository (int8) against NeMo
 
-The test speech: any 16 kHz mono files up to 31 s (macOS: say -o x.aiff "..." and
-afconvert -f WAVE -d LEI16@16000 -c 1 x.aiff x.wav).
+The test speech: any 16 kHz mono files up to 31 s, e.g. LibriSpeech dev-clean utterances (CC BY 4.0) or
+the test recording in test/ of the weights' HF repository.
 """
 
 import os

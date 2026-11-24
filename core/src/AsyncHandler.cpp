@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/Error.h>
 #include <anira/models/core/Model.h>
@@ -18,7 +19,9 @@
 #include <map>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
+#include <ratio>
 #include <span>
 #include <string>
 #include <string_view>
@@ -36,17 +39,16 @@ constexpr std::uint32_t k_default_in_flight = 4;
 constexpr std::chrono::milliseconds k_default_budget{1000};
 
 anira_dtype dtype_named(const std::string& name) {
-    static const std::map<std::string, anira_dtype> k_dtypes{
-        {"float32", ANIRA_DTYPE_F32},
-        {"float64", ANIRA_DTYPE_F64},
-        {"float16", ANIRA_DTYPE_F16},
-        {"bfloat16", ANIRA_DTYPE_BF16},
-        {"int8", ANIRA_DTYPE_I8},
-        {"uint8", ANIRA_DTYPE_U8},
-        {"int16", ANIRA_DTYPE_I16},
-        {"int32", ANIRA_DTYPE_I32},
-        {"int64", ANIRA_DTYPE_I64},
-        {"bool", ANIRA_DTYPE_BOOL8}};
+    static const std::map<std::string, anira_dtype> k_dtypes{{"float32", ANIRA_DTYPE_F32},
+                                                             {"float64", ANIRA_DTYPE_F64},
+                                                             {"float16", ANIRA_DTYPE_F16},
+                                                             {"bfloat16", ANIRA_DTYPE_BF16},
+                                                             {"int8", ANIRA_DTYPE_I8},
+                                                             {"uint8", ANIRA_DTYPE_U8},
+                                                             {"int16", ANIRA_DTYPE_I16},
+                                                             {"int32", ANIRA_DTYPE_I32},
+                                                             {"int64", ANIRA_DTYPE_I64},
+                                                             {"bool", ANIRA_DTYPE_BOOL8}};
     const auto found = k_dtypes.find(name);
     if (found == k_dtypes.end()) { throw Error("AsyncHandler: unknown dtype '" + name + "'"); }
     return found->second;
@@ -104,7 +106,9 @@ anira::Tensor empty(anira_dtype dtype) noexcept {
 // ---------------------------------------------------------------------------------------------
 // Ticket
 
-Ticket::~Ticket() { release(); }
+Ticket::~Ticket() {
+    release();
+}
 
 Ticket::Ticket(Ticket&& other) noexcept
     : m_owner(std::exchange(other.m_owner, nullptr))
@@ -135,9 +139,10 @@ TicketStatus Ticket::status() const noexcept {
 
 TicketStatus Ticket::wait() {
     if (m_owner == nullptr) { return TicketStatus::Failed; }
-    auto& status = m_owner->m_jobs[m_slot].m_status;
-    status.wait(TicketStatus::Pending, std::memory_order_acquire);
-    return status.load(std::memory_order_acquire);
+    const auto& job = m_owner->m_jobs[m_slot];
+    job.m_status.wait(TicketStatus::Pending, std::memory_order_acquire);
+    job.m_running.wait(true, std::memory_order_acquire);
+    return job.m_status.load(std::memory_order_acquire);
 }
 
 TicketStatus Ticket::wait_for(std::chrono::nanoseconds timeout) {
@@ -145,9 +150,9 @@ TicketStatus Ticket::wait_for(std::chrono::nanoseconds timeout) {
     const auto until = std::chrono::steady_clock::now() + timeout;
     for (;;) {
         const TicketStatus now = status();
-        if (now != TicketStatus::Pending || std::chrono::steady_clock::now() >= until) {
-            return now;
-        }
+        const bool done = now != TicketStatus::Pending &&
+                          !m_owner->m_jobs[m_slot].m_running.load(std::memory_order_acquire);
+        if (done || std::chrono::steady_clock::now() >= until) { return now; }
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 }
@@ -157,7 +162,9 @@ void* Ticket::user_data() const noexcept {
 }
 
 anira_status Ticket::error() const noexcept {
-    if (m_owner == nullptr) { return m_refused == ANIRA_OK ? ANIRA_ERROR_INVALID_STATE : m_refused; }
+    if (m_owner == nullptr) {
+        return m_refused == ANIRA_OK ? ANIRA_ERROR_INVALID_STATE : m_refused;
+    }
     return m_owner->m_jobs[m_slot].m_error;
 }
 
@@ -168,8 +175,7 @@ AsyncHandler::AsyncHandler(anira::Context& context,
                            std::string_view model_json,
                            const ModelSource& weights,
                            std::uint32_t threads)
-    : m_context(context)
-    , m_engine(make_onnx_engine(threads)) {
+    : m_context(context), m_engine(make_onnx_engine(threads)) {
     auto description = nlohmann::json::parse(model_json);
     if (m_engine) {
         for (auto& entry : description.at("models")) {
@@ -186,8 +192,9 @@ AsyncHandler::AsyncHandler(anira::Context& context,
             const auto role = tensor.at("role").get<std::string>();
             if (role == "buffer" || role == "streamed") {
                 spec.m_role = Role::Streamed;
-                spec.m_window = role == "buffer" ? to_streamed(tensor)
-                                                 : tensor.at("window").at("max").get<std::int64_t>();
+                spec.m_window = role == "buffer"
+                                    ? to_streamed(tensor)
+                                    : tensor.at("window").at("max").get<std::int64_t>();
                 if (!anchor && side == std::string_view("inputs")) {
                     anchor = tensor.at("name").get<std::string>();
                 }
@@ -210,7 +217,9 @@ AsyncHandler::AsyncHandler(anira::Context& context,
     m_model.max_instances(1);
 }
 
-AsyncHandler::~AsyncHandler() { stop(); }
+AsyncHandler::~AsyncHandler() {
+    stop();
+}
 
 void AsyncHandler::stop() {
     m_stopping.store(true, std::memory_order_release);
@@ -249,8 +258,9 @@ anira::PlanReport AsyncHandler::prepare(const anira::Async& contract) {
     const auto budget = contract.deadline.value_or(k_default_budget);
     // One job per two budgets: the rate anira sizes its rings and checks its budget against (a
     // job takes its budget at most, within a period of twice that).
-    const double jobs_per_second = 0.5e9 / static_cast<double>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(budget).count());
+    const double jobs_per_second =
+        0.5e9 /
+        static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(budget).count());
     hard.host_rate = anchor_window * jobs_per_second;
     hard.budget = budget;
     // No warm-up pass: jobs have no real-time budget to measure, and a large model's cold first
@@ -271,13 +281,14 @@ anira::PlanReport AsyncHandler::prepare(const anira::Async& contract) {
         if (m_engine) { pipeline.add_engine(m_engine); }
         pipeline.add_inference(m_model);
         lane.m_handler = std::make_unique<anira::InferenceHandler>(m_context, pipeline);
-        anira::PlanReport lane_report = lane.m_handler->prepare(hard);
+        lane.m_resets = m_resets.load(std::memory_order_relaxed);
+        const anira::PlanReport lane_report = lane.m_handler->prepare(hard);
         if (!report) { report.emplace(lane_report); }
     }
     for (Lane& lane : m_lanes) {
         lane.m_thread = std::thread([this, &lane] { run(lane); });
     }
-    return *report;
+    return report.value_or(anira::PlanReport(nullptr));
 }
 
 void AsyncHandler::bind_output(std::uint32_t slot, const anira::Tensor& out) {
@@ -298,20 +309,22 @@ Ticket AsyncHandler::submit(std::span<const anira::Tensor> inputs,
     const std::uint64_t sequence = m_tail.load(std::memory_order_relaxed);
     const auto slot = static_cast<std::uint32_t>(sequence % m_capacity);
     Job& job = m_jobs[slot];
-    if (job.m_holders.load(std::memory_order_acquire) != 0) {
+    if (job.m_holders.load(std::memory_order_acquire) != 0 ||
+        job.m_running.load(std::memory_order_acquire)) {
         return Ticket(ANIRA_ERROR_CAPACITY);
     }
-    std::copy(inputs.begin(), inputs.end(), job.m_inputs.begin());
+    std::ranges::copy(inputs, job.m_inputs.begin());
     if (!deadline && m_contract.deadline) {
-        deadline = std::chrono::steady_clock::now() +
-                   std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                       *m_contract.deadline);
+        deadline =
+            std::chrono::steady_clock::now() +
+            std::chrono::duration_cast<std::chrono::steady_clock::duration>(*m_contract.deadline);
     }
     job.m_deadline = deadline;
     job.m_user_data = user_data;
     job.m_error = ANIRA_OK;
     job.m_status.store(TicketStatus::Pending, std::memory_order_relaxed);
-    job.m_holders.store(m_on_complete ? 3 : 2, std::memory_order_relaxed);
+    job.m_holders.store(m_on_complete ? 2 : 1, std::memory_order_relaxed);
+    job.m_running.store(true, std::memory_order_relaxed);
     m_tail.store(sequence + 1, std::memory_order_release);
     m_queued.release();
     return {this, slot};
@@ -328,7 +341,7 @@ std::uint32_t AsyncHandler::poll() {
         }
         entry.store(k_no_slot, std::memory_order_relaxed);
         ++m_completed_head;
-        Job& job = m_jobs[slot];
+        const Job& job = m_jobs[slot];
         if (m_on_complete) { m_on_complete(job.m_user_data, job.m_status.load()); }
         drop_holder(slot);
         ++done;
@@ -337,7 +350,7 @@ std::uint32_t AsyncHandler::poll() {
 }
 
 void AsyncHandler::reset() noexcept {
-    for (Lane& lane : m_lanes) { lane.m_handler->reset(); }
+    m_resets.fetch_add(1, std::memory_order_release);
 }
 
 anira_status AsyncHandler::set_plan(std::uint32_t plan) noexcept {
@@ -360,6 +373,11 @@ void AsyncHandler::run(Lane& lane) noexcept {
         if (m_stopping.load(std::memory_order_acquire)) { return; }
         const std::uint64_t sequence = m_head.fetch_add(1, std::memory_order_acq_rel);
         const auto slot = static_cast<std::uint32_t>(sequence % m_capacity);
+        const std::uint64_t resets = m_resets.load(std::memory_order_acquire);
+        if (resets != lane.m_resets) {
+            lane.m_handler->reset();
+            lane.m_resets = resets;
+        }
         execute(*lane.m_handler, m_jobs[slot]);
         finish(slot);
     }
@@ -394,10 +412,10 @@ void AsyncHandler::execute(anira::InferenceHandler& handler, Job& job) noexcept 
 
     double timeout_ms = ANIRA_WAIT_FOREVER;
     if (job.m_deadline && m_contract.on_late == ANIRA_LATE_DROP) {
-        timeout_ms = std::max(
-            0.0, std::chrono::duration<double, std::milli>(*job.m_deadline -
-                                                           std::chrono::steady_clock::now())
-                     .count());
+        timeout_ms = std::max(0.0,
+                              std::chrono::duration<double, std::milli>(
+                                  *job.m_deadline - std::chrono::steady_clock::now())
+                                  .count());
     }
     bool missed = false;
     bool waited = false;
@@ -436,7 +454,8 @@ void AsyncHandler::finish(std::uint32_t slot) noexcept {
         const std::uint64_t place = m_completed_tail.fetch_add(1, std::memory_order_acq_rel);
         m_completed[place % m_capacity].store(slot, std::memory_order_release);
     }
-    drop_holder(slot);
+    m_jobs[slot].m_running.store(false, std::memory_order_release);
+    m_jobs[slot].m_running.notify_all();
 }
 
 void AsyncHandler::drop_holder(std::uint32_t slot) noexcept {

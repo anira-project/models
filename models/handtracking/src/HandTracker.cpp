@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/handtracking/Decode.h>
@@ -11,6 +12,7 @@
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -26,8 +28,9 @@ namespace {
 constexpr std::size_t k_queue = 256;  // frames a reader may fall behind: about 8 s at 30 fps
 
 anira::Tensor host(float* data, std::initializer_list<std::int64_t> shape) noexcept {
-    return anira::Tensor::from_host(
-        data, ANIRA_DTYPE_F32, std::span<const std::int64_t>(shape.begin(), shape.size()));
+    return anira::Tensor::from_host(data,
+                                    ANIRA_DTYPE_F32,
+                                    std::span<const std::int64_t>(shape.begin(), shape.size()));
 }
 
 bool done(const core::Ticket& ticket) noexcept {
@@ -59,19 +62,26 @@ HandTracker::HandTracker(anira::Context& context, const core::ModelSource& weigh
     , m_min_presence(options.m_min_hand_presence_confidence)
     , m_min_tracking(options.m_min_tracking_confidence) {
     for (Slot& slot : m_slots) {
-        slot.m_landmarks = std::make_unique<core::AsyncHandler>(
-            context, k_hand_landmarks_detector_model_json, weights);
+        slot.m_landmarks =
+            std::make_unique<core::AsyncHandler>(context,
+                                                 k_hand_landmarks_detector_model_json,
+                                                 weights);
         slot.m_embedder =
             std::make_unique<core::AsyncHandler>(context, k_gesture_embedder_model_json, weights);
-        slot.m_classifier = std::make_unique<core::AsyncHandler>(
-            context, k_canned_gesture_classifier_model_json, weights);
+        slot.m_classifier =
+            std::make_unique<core::AsyncHandler>(context,
+                                                 k_canned_gesture_classifier_model_json,
+                                                 weights);
         slot.m_crop.assign(
-            static_cast<std::size_t>(k_landmark_input_size) * k_landmark_input_size * 3, 0.0F);
+            static_cast<std::size_t>(k_landmark_input_size) * k_landmark_input_size * 3,
+            0.0F);
     }
     m_queue.reserve(k_queue);
 }
 
-HandTracker::~HandTracker() { wait_idle(); }
+HandTracker::~HandTracker() {
+    wait_idle();
+}
 
 anira::PlanReport HandTracker::prepare(std::optional<std::chrono::nanoseconds> deadline) {
     const anira::Async contract{.deadline = deadline,
@@ -86,7 +96,7 @@ anira::PlanReport HandTracker::prepare(std::optional<std::chrono::nanoseconds> d
         slot.m_landmarks_job = {};
         slot.m_embedder_job = {};
         slot.m_classifier_job = {};
-        anira::PlanReport slot_report = slot.m_landmarks->prepare(contract);
+        const anira::PlanReport slot_report = slot.m_landmarks->prepare(contract);
         if (!report) { report.emplace(slot_report); }
         slot.m_landmarks->bind_output(0, host(slot.m_out_landmarks.data(), {1, 63}));
         slot.m_landmarks->bind_output(1, host(&slot.m_out_presence, {1, 1}));
@@ -96,10 +106,11 @@ anira::PlanReport HandTracker::prepare(std::optional<std::chrono::nanoseconds> d
         slot.m_embedder->bind_output(0, host(slot.m_embedding.data(), {1, 128}));
         slot.m_classifier->prepare(contract);
         slot.m_classifier->bind_output(
-            0, host(slot.m_scores.data(), {1, static_cast<std::int64_t>(k_gesture_labels.size())}));
+            0,
+            host(slot.m_scores.data(), {1, static_cast<std::int64_t>(k_gesture_labels.size())}));
     }
     reset();
-    return *report;
+    return report.value_or(anira::PlanReport(nullptr));
 }
 
 void HandTracker::reset() {
@@ -128,12 +139,11 @@ void HandTracker::set_options(const Options& options) noexcept {
 
 anira_status HandTracker::process(const Frame& frame) noexcept {
     if (!frame.is_valid()) { return ANIRA_ERROR_INVALID_ARGUMENT; }
-    const Options options{.m_num_hands = m_num_hands.load(std::memory_order_relaxed),
-                          .m_min_hand_detection_confidence =
-                              m_min_detection.load(std::memory_order_relaxed),
-                          .m_min_hand_presence_confidence =
-                              m_min_presence.load(std::memory_order_relaxed),
-                          .m_min_tracking_confidence = m_min_tracking.load(std::memory_order_relaxed)};
+    const Options options{
+        .m_num_hands = m_num_hands.load(std::memory_order_relaxed),
+        .m_min_hand_detection_confidence = m_min_detection.load(std::memory_order_relaxed),
+        .m_min_hand_presence_confidence = m_min_presence.load(std::memory_order_relaxed),
+        .m_min_tracking_confidence = m_min_tracking.load(std::memory_order_relaxed)};
 
     // What finished since the last frame.
     take_detector(options);
@@ -200,7 +210,8 @@ void HandTracker::take_detector(const Options& options) noexcept {
 }
 
 void HandTracker::take_landmarks(Slot& slot, int index, const Options& options) noexcept {
-    if (!done(slot.m_landmarks_job) || slot.m_landmarks_job.status() == core::TicketStatus::Failed) {
+    if (!done(slot.m_landmarks_job) ||
+        slot.m_landmarks_job.status() == core::TicketStatus::Failed) {
         return;
     }
     const bool ok = succeeded(slot.m_landmarks_job);
@@ -222,8 +233,10 @@ void HandTracker::take_landmarks(Slot& slot, int index, const Options& options) 
         hand.m_gesture_score = slot.m_hand->m_gesture_score;
     }
     const auto side = static_cast<float>(k_landmark_input_size);
-    const std::array<Vec2, 4> corners{
-        Vec2{0.0F, 0.0F}, Vec2{side, 0.0F}, Vec2{side, side}, Vec2{0.0F, side}};
+    const std::array<Vec2, 4> corners{Vec2{.m_x = 0.0F, .m_y = 0.0F},
+                                      Vec2{.m_x = side, .m_y = 0.0F},
+                                      Vec2{.m_x = side, .m_y = side},
+                                      Vec2{.m_x = 0.0F, .m_y = side}};
     for (std::size_t i = 0; i < corners.size(); ++i) {
         const Vec2 corner = slot.m_crop_to_frame.transform(corners[i]);
         hand.m_roi_corners[i] = {.m_x = corner.m_x / slot.m_frame_width,
@@ -290,10 +303,12 @@ void HandTracker::take_gestures(Slot& slot) noexcept {
 
 void HandTracker::submit_detector(const Frame& frame) noexcept {
     m_letterbox = letterbox_geometry(frame);
-    sample_to_tensor_rgb(
-        frame, letterbox_dest_to_source(m_letterbox), k_detector_input_size, m_detector_input);
-    const std::array<anira::Tensor, 1> inputs{host(
-        m_detector_input.data(), {1, k_detector_input_size, k_detector_input_size, 3})};
+    sample_to_tensor_rgb(frame,
+                         letterbox_dest_to_source(m_letterbox),
+                         k_detector_input_size,
+                         m_detector_input);
+    const std::array<anira::Tensor, 1> inputs{
+        host(m_detector_input.data(), {1, k_detector_input_size, k_detector_input_size, 3})};
     m_detector_job = m_detector->submit(inputs);
 }
 

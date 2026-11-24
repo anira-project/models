@@ -24,11 +24,12 @@
 namespace anira::models::nemotron_diarization {
 
 inline constexpr double k_sample_rate = 16000.0;
-inline constexpr std::size_t k_chunk = 9;       ///< encoder frames scored per step (720 ms)
-inline constexpr std::size_t k_lookahead = 4;   ///< encoder frames a step looks ahead
-inline constexpr std::size_t k_cached = 192;    ///< cache and FIFO frames a step attends to
-inline constexpr std::size_t k_chunk_mels = (k_chunk + k_lookahead) * SpeakerCache::k_subsampling;  // 104
-inline constexpr std::size_t k_step_mels = k_chunk * SpeakerCache::k_subsampling;                 // 72
+inline constexpr std::size_t k_chunk = 9;      ///< encoder frames scored per step (720 ms)
+inline constexpr std::size_t k_lookahead = 4;  ///< encoder frames a step looks ahead
+inline constexpr std::size_t k_cached = 192;   ///< cache and FIFO frames a step attends to
+inline constexpr std::size_t k_chunk_mels =
+    (k_chunk + k_lookahead) * SpeakerCache::k_subsampling;                         // 104
+inline constexpr std::size_t k_step_mels = k_chunk * SpeakerCache::k_subsampling;  // 72
 
 /// Who speaks: every speaker's probability for one 10 ms frame.
 struct SpeakerFrame {
@@ -65,7 +66,8 @@ public:
 
     /// Main thread, no process() running: the host's rate and largest block; starts the steps.
     void prepare(double sample_rate, std::size_t max_block);
-    /// Main thread, no process() running: a new stream (the clock, the speakers and the queues).
+    /// Main thread, neither process() nor the reader running: a new stream (the clock, the
+    /// speakers and the queues).
     void reset();
 
     /// Audio thread. ANIRA_ERROR_CAPACITY when the steps fell so far behind that audio was lost.
@@ -74,7 +76,7 @@ public:
     void flush() noexcept;
 
     bool pop(SpeakerFrame& frame) noexcept { return m_frames.pop(frame); }
-    bool pop(core::Segment& turn) noexcept { return m_turns.pop(turn); }
+    bool pop(core::Segment& turn) { return m_turns.pop(turn); }
     [[nodiscard]] SpeakerFrame latest() noexcept { return m_latest.read(); }
     [[nodiscard]] std::size_t dropped() const noexcept { return m_dropped.load(); }
     [[nodiscard]] std::size_t dropped_audio() const noexcept { return m_dropped_audio.load(); }
@@ -101,6 +103,7 @@ private:
     };
 
     void loop();
+    void add_mels(std::span<const float> samples);
     void step(std::size_t scored_mels);
     void track(std::int64_t frame, const std::array<float, SpeakerCache::k_speakers>& probability);
     void close(std::size_t speaker, bool all);
@@ -127,16 +130,16 @@ private:
     std::atomic<std::uint64_t> m_taken{0};
 
     // Step thread.
-    std::vector<float> m_mels;        // mel frames not yet stepped past, frame-major
+    std::vector<float> m_mels;  // mel frames not yet stepped past, frame-major
     std::size_t m_mel_count = 0;
     std::vector<float> m_new_mels;
-    std::int64_t m_scored = 0;        // 10 ms frames scored since reset()
-    std::vector<float> m_features;    // [1, 104, 128]
-    std::vector<float> m_cached;      // [1, 192, 512]
-    std::vector<std::int64_t> m_mask;  // [1, 205]
-    std::vector<float> m_logits;      // [1, 1640, 8]
+    std::int64_t m_scored = 0;          // 10 ms frames scored since reset()
+    std::vector<float> m_features;      // [1, 104, 128]
+    std::vector<float> m_cached;        // [1, 192, 512]
+    std::vector<std::int64_t> m_mask;   // [1, 205]
+    std::vector<float> m_logits;        // [1, 1640, 8]
     std::vector<float> m_chunk_embeds;  // [1, 13, 512]
-    std::vector<float> m_silence;     // [512]
+    std::vector<float> m_silence;       // [512]
     std::vector<float> m_input_embeds;
     std::array<Open, SpeakerCache::k_speakers> m_open{};
     std::uint64_t m_turn_id = 0;

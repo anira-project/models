@@ -5,12 +5,13 @@
 // test/ of the weights' HF repository. The tests
 // need ANIRA_MODELS_TEST_WEIGHTS/moonshine-streaming with tiny-en and test/; without it they skip.
 
+#include <anira/anira.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
 #include <anira/models/moonshine_streaming/Moonshine.h>
 #include <anira/models/moonshine_streaming/SegmentDecoder.h>
-#include <tanh/dsp-basics/Resampler.h>
 #include <gtest/gtest.h>
+#include <tanh/dsp-basics/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -22,6 +23,8 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <ios>
+#include <iterator>
 #include <optional>
 #include <span>
 #include <string>
@@ -37,8 +40,10 @@ namespace {
 std::optional<fs::path> weights_dir() {
     const char* root = std::getenv("ANIRA_MODELS_TEST_WEIGHTS");
     if (root == nullptr) { return std::nullopt; }
-    const fs::path dir = fs::path(root) / "moonshine-streaming";
-    if (!fs::exists(dir / "test") || !fs::exists(dir / "tiny-en" / "encoder.onnx")) { return std::nullopt; }
+    fs::path dir = fs::path(root) / "moonshine-streaming";
+    if (!fs::exists(dir / "test") || !fs::exists(dir / "tiny-en" / "encoder.onnx")) {
+        return std::nullopt;
+    }
     return dir;
 }
 
@@ -137,7 +142,9 @@ TEST(Moonshine, StreamsRevisionsAndTheFinalTextAt48k) {
     EXPECT_TRUE(last.m_is_final);
     EXPECT_EQ(last.m_id, 0U);
     EXPECT_EQ(last.m_start_sample, 0);
-    EXPECT_NEAR(static_cast<double>(last.m_end_sample), static_cast<double>(audio.size()), 48000.0 * 0.5);
+    EXPECT_NEAR(static_cast<double>(last.m_end_sample),
+                static_cast<double>(audio.size()),
+                48000.0 * 0.5);
     EXPECT_NE(lower(last.m_text).find("worst of times"), std::string::npos) << last.m_text;
     for (std::size_t i = 0; i + 1 < revisions.size(); ++i) {
         EXPECT_FALSE(revisions[i].m_is_final);

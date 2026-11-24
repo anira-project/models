@@ -73,11 +73,11 @@ private:
 /// Until then the inside is anira's Hard contract: the constructor rewrites a copy of the
 /// description, every Buffer tensor a Streamed one flattened onto its Time axis (one window = the
 /// whole tensor; the workshop's way); prepare derives the Hard contract (one window per push, the
-/// deadline as the budget, zeros on a miss, every output's latency 0, no warm-up); a worker thread per lane,
-/// each with a handler of its own, pushes a job and waits for its outputs: without limit under
-/// on_late finish (never misses), until the deadline under on_late drop (a job not done by then
-/// is dropped and its outputs are zeros; anira delivers no late block afterwards, so the stream
-/// stays in step). A model with State runs on one lane (each lane would keep its own state).
+/// deadline as the budget, zeros on a miss, every output's latency 0, no warm-up); a worker thread
+/// per lane, each with a handler of its own, pushes a job and waits for its outputs: without limit
+/// under on_late finish (never misses), until the deadline under on_late drop (a job not done by
+/// then is dropped and its outputs are zeros; anira delivers no late block afterwards, so the
+/// stream stays in step). A model with State runs on one lane (each lane would keep its own state).
 ///
 /// Threads: submit from one thread, never blocks and never allocates (a semaphore wakes the
 /// worker); poll and the tickets from any one thread.
@@ -116,7 +116,8 @@ public:
     /// Runs on_complete for the jobs done since the last poll; their number.
     std::uint32_t poll();
 
-    /// A new stream: every lane's State back to zero (anira_handler_reset). No job in flight.
+    /// A new stream: every lane's State back to zero (anira_handler_reset, which each lane's
+    /// worker calls before its next job: anira's driver thread). No job in flight.
     void reset() noexcept;
     anira_status set_plan(std::uint32_t plan) noexcept;
     [[nodiscard]] anira::PlanReport plan_report() const;
@@ -139,11 +140,15 @@ private:
         void* m_user_data = nullptr;
         std::atomic<TicketStatus> m_status{TicketStatus::Pending};
         anira_status m_error = ANIRA_OK;
-        std::atomic<int> m_holders{0};  // ticket, worker, poll; free at 0
+        std::atomic<int> m_holders{0};  // ticket, poll
+        // Its worker has not finished it. Cleared after the status is published, so a ticket that
+        // saw the status can wait the last moment out and its next submit finds the slot free.
+        std::atomic<bool> m_running{false};
     };
     struct Lane {
         std::unique_ptr<anira::InferenceHandler> m_handler;
         std::thread m_thread;
+        std::uint64_t m_resets = 0;  // the worker's: the resets it has made
     };
 
     void run(Lane& lane) noexcept;
@@ -169,6 +174,7 @@ private:
     std::atomic<std::uint64_t> m_head{0};  // next job a worker takes
     std::counting_semaphore<> m_queued{0};
     std::atomic<bool> m_stopping{false};
+    std::atomic<std::uint64_t> m_resets{0};  // the resets asked for
 
     // Completed slots, in order, for poll: a ring as long as the job slots.
     std::unique_ptr<std::atomic<std::uint32_t>[]> m_completed;  // NOLINT(modernize-avoid-c-arrays)

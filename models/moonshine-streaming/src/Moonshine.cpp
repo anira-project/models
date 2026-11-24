@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <anira/anira.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
 #include <anira/models/moonshine_streaming/Moonshine.h>
@@ -7,6 +8,7 @@
 
 #include <algorithm>
 #include <anira/anira.hpp>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -27,13 +29,14 @@ constexpr auto k_poll = std::chrono::milliseconds(5);
 }  // namespace
 
 Moonshine::Moonshine(anira::Context& context, const core::ModelSource& weights, Variant variant)
-    : m_decoder(context, weights, variant)
-    , m_step(k_step, 0.0F) {
+    : m_decoder(context, weights, variant), m_step(k_step, 0.0F) {
     m_audio.reserve(k_audio_queue);
     m_segments.reserve(k_segment_queue);
 }
 
-Moonshine::~Moonshine() { stop(); }
+Moonshine::~Moonshine() {
+    stop();
+}
 
 void Moonshine::stop() {
     m_running.store(false);

@@ -9,6 +9,7 @@
 #include <anira/anira.hpp>
 #include <array>
 #include <cstddef>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -36,11 +37,13 @@ TEST(CoreModelSource, AMissingFileThrows) {
 
 TEST(CoreModelSource, BytesAreFoundUnderTheNormalPath) {
     const std::array<std::byte, 3> data{std::byte{1}, std::byte{2}, std::byte{3}};
-    const core::ModelSource source = core::ModelSource::bytes({{"onnx/./a/../model.onnx", data}});
+    const core::ModelSource source =
+        core::ModelSource::bytes({{.m_path = "onnx/./a/../model.onnx", .m_bytes = data}});
     const auto found = source.find_bytes("onnx/model.onnx");
     ASSERT_TRUE(found.has_value());
-    EXPECT_EQ(found.value().size(), 3U);
-    EXPECT_EQ(found.value().data(), data.data());
+    const std::span<const std::byte> bytes = found.value_or(std::span<const std::byte>{});
+    EXPECT_EQ(bytes.size(), 3U);
+    EXPECT_EQ(bytes.data(), data.data());
 }
 
 TEST(CoreModel, LoadsFromADirectoryAndRuns) {

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/Error.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
+#include <anira/models/core/Words.h>
 #include <anira/models/parakeet_tdt/Descriptions.h>
 #include <anira/models/parakeet_tdt/Parakeet.h>
 #include <anira/models/parakeet_tdt/TdtGreedyDecoder.h>
-#include <anira/models/core/Vocabulary.h>
-#include <anira/models/core/Words.h>
 #include <tanh/dsp-basics/Resampler.h>
 
 #include <algorithm>
@@ -22,6 +22,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace anira::models::parakeet_tdt {
@@ -30,13 +31,14 @@ namespace {
 
 constexpr std::size_t k_mel_bins = 128;
 constexpr std::size_t k_encoder_dim = 1024;
-constexpr std::size_t k_state = 2 * 640;  // [2, 1, 640]
+constexpr std::size_t k_state = std::size_t{2} * 640;  // [2, 1, 640]
 constexpr std::int32_t k_blank = 8192;
 constexpr std::size_t k_logits = 8198;  // 8192 tokens, the blank, 5 durations
 
 anira::Tensor host(void* data, anira_dtype dtype, std::initializer_list<std::int64_t> shape) {
-    return anira::Tensor::from_host(
-        data, dtype, std::span<const std::int64_t>(shape.begin(), shape.size()));
+    return anira::Tensor::from_host(data,
+                                    dtype,
+                                    std::span<const std::int64_t>(shape.begin(), shape.size()));
 }
 
 constexpr std::array<std::string_view, k_windows.size()> k_preprocessor_json{
@@ -123,7 +125,8 @@ Parakeet::Parakeet(anira::Context& context, const core::ModelSource& weights)
     , m_features(k_mel_bins * k_windows.back().m_mel_frames)
     , m_encoded(k_encoder_dim * k_windows.back().m_encoder_frames) {
     for (std::size_t w = 0; w < k_windows.size(); ++w) {
-        m_preprocessors[w] = std::make_unique<core::AsyncHandler>(context, k_preprocessor_json[w], weights);
+        m_preprocessors[w] =
+            std::make_unique<core::AsyncHandler>(context, k_preprocessor_json[w], weights);
         m_encoders[w] = std::make_unique<core::AsyncHandler>(context, k_encoder_json[w], weights);
     }
 }
@@ -136,24 +139,33 @@ void Parakeet::prepare() {
         const auto mel = static_cast<std::int64_t>(window.m_mel_frames);
         const auto frames = static_cast<std::int64_t>(window.m_encoder_frames);
         m_preprocessors[w]->prepare(anira::Async{.max_in_flight = 1});
-        m_preprocessors[w]->bind_output(0, host(m_features.data(), ANIRA_DTYPE_F32, {1, k_mel_bins, mel}));
+        m_preprocessors[w]->bind_output(
+            0,
+            host(m_features.data(), ANIRA_DTYPE_F32, {1, k_mel_bins, mel}));
         m_preprocessors[w]->bind_output(1, host(&m_features_length, ANIRA_DTYPE_I64, {1}));
         m_encoders[w]->prepare(anira::Async{.max_in_flight = 1});
-        m_encoders[w]->bind_output(0, host(m_encoded.data(), ANIRA_DTYPE_F32, {1, k_encoder_dim, frames}));
+        m_encoders[w]->bind_output(
+            0,
+            host(m_encoded.data(), ANIRA_DTYPE_F32, {1, k_encoder_dim, frames}));
         m_encoders[w]->bind_output(1, host(&m_encoded_length, ANIRA_DTYPE_I64, {1}));
     }
     m_joint->prepare();
 }
 
-core::Segment Parakeet::transcribe(std::span<const float> audio, std::int64_t start_sample, std::uint64_t id) {
+core::Segment Parakeet::transcribe(std::span<const float> audio,
+                                   std::int64_t start_sample,
+                                   std::uint64_t id) {
     if (audio.size() > k_max_samples) { throw Error("Parakeet: a segment is at most 31 s"); }
-    const auto fits = std::ranges::find_if(k_windows, [&](const Window& w) { return audio.size() <= w.m_samples; });
+    const auto fits = std::ranges::find_if(k_windows, [&](const Window& w) {
+        return audio.size() <= w.m_samples;
+    });
     const auto w = static_cast<std::size_t>(fits - k_windows.begin());
     const Window& window = *fits;
 
     std::ranges::copy(audio, m_waveform.begin());
     std::fill(m_waveform.begin() + static_cast<std::ptrdiff_t>(audio.size()),
-              m_waveform.begin() + static_cast<std::ptrdiff_t>(window.m_samples), 0.0F);
+              m_waveform.begin() + static_cast<std::ptrdiff_t>(window.m_samples),
+              0.0F);
     m_waveform_length = static_cast<std::int64_t>(audio.size());
     const std::array<anira::Tensor, 2> preprocessor_inputs{
         host(m_waveform.data(), ANIRA_DTYPE_F32, {1, static_cast<std::int64_t>(window.m_samples)}),
@@ -162,15 +174,20 @@ core::Segment Parakeet::transcribe(std::span<const float> audio, std::int64_t st
     wait(features, "preprocessor");
 
     const std::array<anira::Tensor, 2> encoder_inputs{
-        host(m_features.data(), ANIRA_DTYPE_F32, {1, k_mel_bins, static_cast<std::int64_t>(window.m_mel_frames)}),
+        host(m_features.data(),
+             ANIRA_DTYPE_F32,
+             {1, k_mel_bins, static_cast<std::int64_t>(window.m_mel_frames)}),
         host(&m_features_length, ANIRA_DTYPE_I64, {1})};
     core::Ticket encoded = m_encoders[w]->submit(encoder_inputs);
     wait(encoded, "encoder");
 
-    const auto frames = static_cast<std::size_t>(std::clamp<std::int64_t>(
-        m_encoded_length, 0, static_cast<std::int64_t>(window.m_encoder_frames)));
-    m_joint->begin(std::span<const float>(m_encoded.data(), k_encoder_dim * window.m_encoder_frames),
-                   window.m_encoder_frames);
+    const auto frames = static_cast<std::size_t>(
+        std::clamp<std::int64_t>(m_encoded_length,
+                                 0,
+                                 static_cast<std::int64_t>(window.m_encoder_frames)));
+    m_joint->begin(
+        std::span<const float>(m_encoded.data(), k_encoder_dim * window.m_encoder_frames),
+        window.m_encoder_frames);
     const TdtConfig config{.m_blank_id = k_blank,
                            .m_num_tokens = static_cast<std::size_t>(k_blank) + 1,
                            .m_durations = {0, 1, 2, 3, 4},
@@ -186,7 +203,8 @@ core::Segment Parakeet::transcribe(std::span<const float> audio, std::int64_t st
     segment.m_end_sample = start_sample + static_cast<std::int64_t>(audio.size());
     segment.m_text = m_vocabulary.decode(ids);
     if (!segment.m_text.empty() && segment.m_text.front() == ' ') { segment.m_text.erase(0, 1); }
-    segment.m_words = core::words_from_tokens(tokens, m_vocabulary, start_sample, segment.m_end_sample);
+    segment.m_words =
+        core::words_from_tokens(tokens, m_vocabulary, start_sample, segment.m_end_sample);
     segment.m_is_final = true;
     return segment;
 }
@@ -208,10 +226,13 @@ std::vector<core::Segment> Parakeet::run(anira::Context& context,
     const double to_host = sample_rate / k_sample_rate;
     for (std::size_t start = 0; start < audio.size(); start += k_max_samples) {
         const auto count = std::min(k_max_samples, audio.size() - start);
-        core::Segment segment = parakeet.transcribe(std::span<const float>(audio).subspan(start, count),
-                                                    static_cast<std::int64_t>(start),
-                                                    segments.size());
-        const auto scale = [&](std::int64_t s) { return std::llround(static_cast<double>(s) * to_host); };
+        core::Segment segment =
+            parakeet.transcribe(std::span<const float>(audio).subspan(start, count),
+                                static_cast<std::int64_t>(start),
+                                segments.size());
+        const auto scale = [&](std::int64_t s) {
+            return std::llround(static_cast<double>(s) * to_host);
+        };
         segment.m_start_sample = scale(segment.m_start_sample);
         segment.m_end_sample = scale(segment.m_end_sample);
         for (core::Word& word : segment.m_words) {

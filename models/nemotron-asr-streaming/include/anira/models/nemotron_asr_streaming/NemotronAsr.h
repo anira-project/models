@@ -28,8 +28,8 @@
 namespace anira::models::nemotron_asr_streaming {
 
 inline constexpr double k_sample_rate = 16000.0;
-inline constexpr std::size_t k_new_mels = 56;    ///< mel frames a step adds (560 ms)
-inline constexpr std::size_t k_cache_mels = 9;   ///< the previous step's last frames in front
+inline constexpr std::size_t k_new_mels = 56;   ///< mel frames a step adds (560 ms)
+inline constexpr std::size_t k_cache_mels = 9;  ///< the previous step's last frames in front
 inline constexpr std::size_t k_step_mels = k_cache_mels + k_new_mels;  // 65
 inline constexpr std::size_t k_step_frames = 7;  ///< encoder frames a step gives (80 ms each)
 
@@ -76,7 +76,8 @@ public:
 
     /// Main thread, no process() running: the host's rate and largest block; starts decoding.
     void prepare(double sample_rate, std::size_t max_block);
-    /// Main thread, no process() running: a new stream (the clock, the model and the queues).
+    /// Main thread, neither process() nor the reader running: a new stream (the clock, the model
+    /// and the queues).
     void reset();
 
     /// Audio thread. ANIRA_ERROR_CAPACITY when decoding fell so far behind that audio was lost.
@@ -84,8 +85,8 @@ public:
     /// Audio thread: the current segment ends after the audio given so far.
     void end_segment() noexcept;
 
-    bool pop(core::Segment& segment) noexcept { return m_segments.pop(segment); }
-    [[nodiscard]] core::Segment latest() noexcept { return m_latest.read(); }
+    bool pop(core::Segment& segment) { return m_segments.pop(segment); }
+    [[nodiscard]] core::Segment latest() { return m_latest.read(); }
     [[nodiscard]] std::size_t dropped() const noexcept { return m_dropped.load(); }
     [[nodiscard]] std::size_t dropped_audio() const noexcept { return m_dropped_audio.load(); }
     /// Steps lost to a failed job (anira's error).
@@ -153,14 +154,15 @@ private:
     std::vector<float> m_c;
     std::vector<float> m_h_next;
     std::vector<float> m_c_next;
-    std::vector<float> m_decoder_out;  // [1, 640, 1]
-    std::vector<float> m_logits;       // [1, 1, 1, 13088]
-    std::int64_t m_model_samples = 0;  // taken since reset()
-    std::int64_t m_base = 0;           // model sample of frame 0 since the last start over
-    std::int64_t m_frames = 0;         // encoder frames since the last start over
-    std::int64_t m_segment_frame = 0;  // the open segment's first encoder frame
+    std::vector<float> m_decoder_out;   // [1, 640, 1]
+    std::vector<float> m_logits;        // [1, 1, 1, 13088]
+    std::int64_t m_model_samples = 0;   // taken since reset()
+    std::int64_t m_base = 0;            // model sample of frame 0 since the last start over
+    std::int64_t m_frames = 0;          // encoder frames since the last start over
+    std::int64_t m_segment_frame = 0;   // the open segment's first encoder frame
     std::vector<core::Token> m_tokens;  // the open segment's, frames relative to m_segment_frame
     std::uint64_t m_segment_id = 0;
+    bool m_start_over = false;  // a failed start over, retried at the next block
     std::thread m_thread;
     std::atomic<bool> m_running{false};
 };

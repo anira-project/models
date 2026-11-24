@@ -5,6 +5,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <type_traits>
 
 namespace anira::models::core {
 
@@ -15,10 +16,11 @@ template <class T>
 class Latest {
 public:
     /// Writer: publishes `value`.
-    void write(const T& value) noexcept {
+    void write(const T& value) noexcept(std::is_nothrow_copy_assignable_v<T>) {
         m_slots[m_write] = value;
         const std::uint8_t previous =
-            m_shared.exchange(static_cast<std::uint8_t>(m_write | k_fresh), std::memory_order_acq_rel);
+            m_shared.exchange(static_cast<std::uint8_t>(m_write | k_fresh),
+                              std::memory_order_acq_rel);
         m_write = previous & k_index;
     }
     /// Reader: the newest value.
@@ -30,7 +32,7 @@ public:
         return m_slots[m_read];
     }
     /// With neither thread using it: every slot back to `value`.
-    void reset(const T& value = T{}) noexcept {
+    void reset(const T& value = T{}) noexcept(std::is_nothrow_copy_assignable_v<T>) {
         m_slots.fill(value);
         m_write = 0;
         m_shared.store(1, std::memory_order_relaxed);

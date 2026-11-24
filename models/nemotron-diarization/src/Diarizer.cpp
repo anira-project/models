@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
+#include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/Error.h>
+#include <anira/models/core/LogMel.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
 #include <anira/models/nemotron_diarization/Descriptions.h>
@@ -11,6 +13,7 @@
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -32,21 +35,23 @@ constexpr std::size_t k_hidden = SpeakerCache::k_hidden;
 constexpr std::size_t k_sub = SpeakerCache::k_subsampling;
 constexpr std::size_t k_frames = k_cached + k_chunk + k_lookahead;  // 205
 constexpr std::size_t k_audio_queue = 64 * 16000 / 256;
-constexpr std::size_t k_frame_queue = 100 * 60 * 2;  // two minutes of 10 ms frames
+constexpr std::size_t k_frame_queue = std::size_t{100} * 60 * 2;  // two minutes of 10 ms frames
 constexpr std::size_t k_turn_queue = 1024;
 constexpr auto k_poll = std::chrono::milliseconds(5);
 constexpr double k_frame_seconds = 0.01;
 
 anira::Tensor host(void* data, anira_dtype dtype, std::initializer_list<std::int64_t> shape) {
-    return anira::Tensor::from_host(
-        data, dtype, std::span<const std::int64_t>(shape.begin(), shape.size()));
+    return anira::Tensor::from_host(data,
+                                    dtype,
+                                    std::span<const std::int64_t>(shape.begin(), shape.size()));
 }
 
 }  // namespace
 
 Diarizer::Diarizer(anira::Context& context, const core::ModelSource& weights, TurnConfig turns)
     : m_turn_config(turns)
-    , m_handler(std::make_unique<core::AsyncHandler>(context, k_nemotron_diarization_model_json, weights))
+    , m_handler(
+          std::make_unique<core::AsyncHandler>(context, k_nemotron_diarization_model_json, weights))
     , m_mels(16 * k_chunk_mels * core::LogMel::k_mels)
     , m_features(k_chunk_mels * core::LogMel::k_mels)
     , m_cached(k_cached * k_hidden)
@@ -59,7 +64,9 @@ Diarizer::Diarizer(anira::Context& context, const core::ModelSource& weights, Tu
     m_turns.reserve(k_turn_queue);
 }
 
-Diarizer::~Diarizer() { stop(); }
+Diarizer::~Diarizer() {
+    stop();
+}
 
 void Diarizer::stop() {
     m_running.store(false);
@@ -69,8 +76,12 @@ void Diarizer::stop() {
 void Diarizer::prepare(double sample_rate, std::size_t max_block) {
     stop();
     m_handler->prepare(anira::Async{.max_in_flight = 1});
-    m_handler->bind_output(0, host(m_logits.data(), ANIRA_DTYPE_F32, {1, k_frames * k_sub, k_speakers}));
-    m_handler->bind_output(1, host(m_chunk_embeds.data(), ANIRA_DTYPE_F32, {1, k_chunk + k_lookahead, k_hidden}));
+    m_handler->bind_output(
+        0,
+        host(m_logits.data(), ANIRA_DTYPE_F32, {1, k_frames * k_sub, k_speakers}));
+    m_handler->bind_output(
+        1,
+        host(m_chunk_embeds.data(), ANIRA_DTYPE_F32, {1, k_chunk + k_lookahead, k_hidden}));
     m_handler->bind_output(2, host(m_silence.data(), ANIRA_DTYPE_F32, {k_hidden}));
     m_host_rate = sample_rate;
     m_max_block = max_block;
@@ -144,27 +155,43 @@ void Diarizer::loop() {
             continue;
         }
         try {
-            const std::size_t made = m_mel.process(std::span<const float>(block.m_samples.data(), block.m_count), m_new_mels);
-            std::copy_n(m_new_mels.begin(), made * core::LogMel::k_mels,
-                        m_mels.begin() + static_cast<std::ptrdiff_t>(m_mel_count * core::LogMel::k_mels));
-            m_mel_count += made;
+            add_mels(std::span<const float>(block.m_samples.data(), block.m_count));
             while (m_mel_count >= k_chunk_mels) { step(k_step_mels); }
             if (block.m_end) {
+                // The frames centred near the audio's end: the right half window of zeros.
+                const std::array<float, core::LogMel::k_fft / 2> silence{};
+                add_mels(silence);
+                while (m_mel_count >= k_chunk_mels) { step(k_step_mels); }
                 // The frames still waiting for their look-ahead: padded with silence, scored.
                 const float floor = std::log(std::ldexp(1.0F, -24));
                 while (m_mel_count > 0) {
-                    std::fill(m_mels.begin() + static_cast<std::ptrdiff_t>(m_mel_count * core::LogMel::k_mels),
-                              m_mels.begin() + static_cast<std::ptrdiff_t>(k_chunk_mels * core::LogMel::k_mels),
+                    std::fill(m_mels.begin() +
+                                  static_cast<std::ptrdiff_t>(m_mel_count * core::LogMel::k_mels),
+                              m_mels.begin() +
+                                  static_cast<std::ptrdiff_t>(k_chunk_mels * core::LogMel::k_mels),
                               floor);
                     step(std::min(m_mel_count, k_step_mels));
                 }
                 for (std::size_t s = 0; s < k_speakers; ++s) { close(s, true); }
             }
         } catch (const std::exception&) {
-            m_mel_count = 0;  // a failed step: its audio is lost
+            // A failed step: its frames are lost, the clock goes on past them.
+            m_scored += static_cast<std::int64_t>(m_mel_count);
+            m_mel_count = 0;
+            if (block.m_end) {
+                for (std::size_t s = 0; s < k_speakers; ++s) { close(s, true); }
+            }
         }
         m_taken.fetch_add(1, std::memory_order_release);
     }
+}
+
+void Diarizer::add_mels(std::span<const float> samples) {
+    const std::size_t made = m_mel.process(samples, m_new_mels);
+    std::copy_n(m_new_mels.begin(),
+                made * core::LogMel::k_mels,
+                m_mels.begin() + static_cast<std::ptrdiff_t>(m_mel_count * core::LogMel::k_mels));
+    m_mel_count += made;
 }
 
 // One chunk: the next 104 mel frames with the speaker cache in front; scores `scored_mels` frames.
@@ -172,9 +199,10 @@ void Diarizer::step(std::size_t scored_mels) {
     std::copy_n(m_mels.begin(), k_chunk_mels * core::LogMel::k_mels, m_features.begin());
     const std::vector<float> real = m_cache.embeds();  // the cache, then the FIFO
     const std::size_t n = m_cache.frames();
-    std::fill(m_cached.begin(), m_cached.end(), 0.0F);
-    std::copy(real.begin(), real.end(), m_cached.begin() + static_cast<std::ptrdiff_t>((k_cached - n) * k_hidden));
-    std::fill(m_mask.begin(), m_mask.end(), 0);
+    std::ranges::fill(m_cached, 0.0F);
+    std::ranges::copy(real,
+                      m_cached.begin() + static_cast<std::ptrdiff_t>((k_cached - n) * k_hidden));
+    std::ranges::fill(m_mask, 0);
     std::fill(m_mask.begin() + static_cast<std::ptrdiff_t>(k_cached - n), m_mask.end(), 1);
     const std::array<anira::Tensor, 3> inputs{
         host(m_features.data(), ANIRA_DTYPE_F32, {1, k_chunk_mels, core::LogMel::k_mels}),
@@ -209,7 +237,8 @@ void Diarizer::step(std::size_t scored_mels) {
     // Step past the chunk's frames.
     if (m_mel_count > k_step_mels) {
         std::copy(m_mels.begin() + static_cast<std::ptrdiff_t>(k_step_mels * core::LogMel::k_mels),
-                  m_mels.begin() + static_cast<std::ptrdiff_t>(m_mel_count * core::LogMel::k_mels), m_mels.begin());
+                  m_mels.begin() + static_cast<std::ptrdiff_t>(m_mel_count * core::LogMel::k_mels),
+                  m_mels.begin());
         m_mel_count -= k_step_mels;
     } else {
         m_mel_count = 0;
@@ -221,9 +250,7 @@ void Diarizer::track(std::int64_t frame, const std::array<float, k_speakers>& pr
     for (std::size_t s = 0; s < k_speakers; ++s) {
         Open& open = m_open[s];
         if (probability[s] > m_turn_config.m_threshold) {
-            if (!open.m_active) {
-                open = {.m_active = true, .m_start = frame, .m_last = frame};
-            }
+            if (!open.m_active) { open = {.m_active = true, .m_start = frame, .m_last = frame}; }
             open.m_last = frame;
         } else if (open.m_active && frame - open.m_last > gap) {
             close(s, false);

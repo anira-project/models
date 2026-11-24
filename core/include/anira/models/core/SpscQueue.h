@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <type_traits>
 #include <vector>
 
 namespace anira::models::core {
@@ -26,7 +27,7 @@ public:
     }
 
     /// Producer.
-    bool push(const T& value) noexcept {
+    bool push(const T& value) noexcept(std::is_nothrow_copy_assignable_v<T>) {
         const std::size_t tail = m_tail.load(std::memory_order_relaxed);
         const std::size_t next = advance(tail);
         if (m_slots.empty() || next == m_head.load(std::memory_order_acquire)) { return false; }
@@ -35,7 +36,7 @@ public:
         return true;
     }
     /// Consumer: the oldest entry, false when there is none.
-    bool pop(T& value) noexcept {
+    bool pop(T& value) noexcept(std::is_nothrow_copy_assignable_v<T>) {
         const std::size_t head = m_head.load(std::memory_order_relaxed);
         if (head == m_tail.load(std::memory_order_acquire)) { return false; }
         value = m_slots[head];

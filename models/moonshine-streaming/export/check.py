@@ -7,8 +7,8 @@ inputs. The final transcripts must equal transformers' on the whole segment.
     uv run check.py <variant> <audio.wav>...      the upstream graphs (upstream/<variant>/, int8) against
                                                   transformers: transcripts only, reported
 
-The test speech: 16 kHz mono files up to 16 s (macOS: say -o x.aiff "..." and
-afconvert -f WAVE -d LEI16@16000 -c 1 x.aiff x.wav).
+The test speech: 16 kHz mono files up to 16 s, e.g. LibriSpeech dev-clean utterances (CC BY 4.0) or
+the test recording in test/ of the weights' HF repository.
 """
 
 import os

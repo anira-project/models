@@ -3,13 +3,15 @@
 // Nemotron 3.5 ASR Streaming (int4) on Moonshine's test recording (moonshine-ai/moonshine
 // test-assets/two_cities_16k.wav, a LibriVox reading of A Tale of Two Cities, public domain), in
 // test/ of the weights' HF repository (revision 27a3f8c). The tests need
-// ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 with onnx/ and test/; without it they skip.
+// ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 with onnx/ and test/; without it they
+// skip.
 
+#include <anira/anira.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
 #include <anira/models/nemotron_asr_streaming/NemotronAsr.h>
-#include <tanh/dsp-basics/Resampler.h>
 #include <gtest/gtest.h>
+#include <tanh/dsp-basics/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -22,6 +24,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -39,13 +42,16 @@ std::optional<fs::path> weights_dir() {
     const char* root = std::getenv("ANIRA_MODELS_TEST_WEIGHTS");
     if (root == nullptr) { return std::nullopt; }
     fs::path dir = fs::path(root) / "nemotron-3.5-asr-streaming-int4";
-    if (!fs::exists(dir / "test") || !fs::exists(dir / "onnx" / "encoder.onnx")) { return std::nullopt; }
+    if (!fs::exists(dir / "test") || !fs::exists(dir / "onnx" / "encoder.onnx")) {
+        return std::nullopt;
+    }
     return dir;
 }
 
 std::vector<float> read_wav(const fs::path& path) {
     std::ifstream file(path, std::ios::binary);
-    const std::vector<char> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    const std::vector<char> bytes{std::istreambuf_iterator<char>(file),
+                                  std::istreambuf_iterator<char>()};
     std::size_t offset = 12;
     while (offset + 8 <= bytes.size()) {
         std::uint32_t size = 0;
@@ -87,11 +93,17 @@ TEST(NemotronAsr, LanguagesAreTheModelsPromptIndices) {
 
 TEST(NemotronAsr, RunTranscribesTheOpeningWithWords) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing";
+    }
     const std::vector<float> audio = opening(*dir);
     anira::Context context{anira::ContextConfig{}};
-    const std::vector<core::Segment> segments = na::NemotronAsr::run(
-        context, core::ModelSource::directory(*dir), audio, 16000.0, na::AsrConfig{.m_language = "en-US"});
+    const std::vector<core::Segment> segments =
+        na::NemotronAsr::run(context,
+                             core::ModelSource::directory(*dir),
+                             audio,
+                             16000.0,
+                             na::AsrConfig{.m_language = "en-US"});
     ASSERT_EQ(segments.size(), 1U);
     const core::Segment& segment = segments.front();
     EXPECT_NE(lower(segment.m_text).find("best of times"), std::string::npos) << segment.m_text;
@@ -108,7 +120,9 @@ TEST(NemotronAsr, RunTranscribesTheOpeningWithWords) {
 
 TEST(NemotronAsr, StreamsRevisionsAt48kInAutoMode) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing";
+    }
     const std::vector<float> at_16k = opening(*dir);
     thl::dsp_basics::Resampler up;
     up.prepare(16000.0, 48000.0, at_16k.size());
@@ -133,7 +147,9 @@ TEST(NemotronAsr, StreamsRevisionsAt48kInAutoMode) {
     const core::Segment& last = revisions.back();
     EXPECT_TRUE(last.m_is_final);
     EXPECT_EQ(last.m_id, 0U);
-    EXPECT_NEAR(static_cast<double>(last.m_end_sample), static_cast<double>(audio.size()), 48000.0 * 0.1);
+    EXPECT_NEAR(static_cast<double>(last.m_end_sample),
+                static_cast<double>(audio.size()),
+                48000.0 * 0.1);
     EXPECT_NE(lower(last.m_text).find("worst of times"), std::string::npos) << last.m_text;
     EXPECT_EQ(last.m_text.find('<'), std::string::npos) << last.m_text;
     for (std::size_t i = 0; i + 1 < revisions.size(); ++i) {
@@ -147,13 +163,20 @@ TEST(NemotronAsr, StreamsRevisionsAt48kInAutoMode) {
 
 TEST(NemotronAsr, LongAudioIsCutAtTheLimit) {
     const auto dir = weights_dir();
-    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing"; }
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing";
+    }
     const std::vector<float> audio = read_wav(*dir / "test" / "two_cities_16k.wav");  // 44 s
     anira::Context context{anira::ContextConfig{}};
     const auto start = std::chrono::steady_clock::now();
-    const std::vector<core::Segment> segments = na::NemotronAsr::run(
-        context, core::ModelSource::directory(*dir), audio, 16000.0, na::AsrConfig{.m_max_segment = 10.0});
-    const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    const std::vector<core::Segment> segments =
+        na::NemotronAsr::run(context,
+                             core::ModelSource::directory(*dir),
+                             audio,
+                             16000.0,
+                             na::AsrConfig{.m_max_segment = 10.0});
+    const double seconds =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     ASSERT_GE(segments.size(), 4U);
     std::string text;
     for (std::size_t i = 0; i < segments.size(); ++i) {

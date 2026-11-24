@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// The gain model (test-models/simple-gain, mono, ONNX Runtime) on anira's Hard path: a run that shows it loaded from what a
-// source held, and a prepare that reports what anira refused.
+// The gain model (test-models/simple-gain, mono, ONNX Runtime) on anira's Hard path: a run that
+// shows it loaded from what a source held, and a prepare that reports what anira refused.
 
 #pragma once
 
@@ -61,7 +61,9 @@ inline anira_handler* prepare_handler(anira::Context& context,
     anira_pipeline_create(&pipeline, &err);
     const std::array<const anira_model_config*, 1> variants{model.native()};
     const std::array<anira_backend_id, 1> candidates{
-        anira_backend_id{sizeof(anira_backend_id), ANIRA_ENGINE_ONNXRUNTIME, ANIRA_PROVIDER_CPU}};
+        anira_backend_id{.struct_size = sizeof(anira_backend_id),
+                         .engine = ANIRA_ENGINE_ONNXRUNTIME,
+                         .provider = ANIRA_PROVIDER_CPU}};
     anira_pipeline_add_inference(pipeline, variants.data(), 1, candidates.data(), 1, &err);
     anira_handler* handler = nullptr;
     status = anira_handler_create(context.native(), pipeline, &handler, &err);

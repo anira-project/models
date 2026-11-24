@@ -4,6 +4,7 @@
 // jobs give the same results as the model, in order; State carries from job to job; a full queue
 // refuses a submit; on_late drop drops a job past its deadline and the next one is still in step.
 
+#include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/ModelSource.h>
 #include <gtest/gtest.h>
@@ -13,6 +14,8 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <initializer_list>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -48,10 +51,14 @@ constexpr std::string_view k_accumulator_json = R"({
   ]
 })";
 
-core::ModelSource weights() { return core::ModelSource::directory(MODELS_TEST_GAIN_DIR); }
+core::ModelSource weights() {
+    return core::ModelSource::directory(MODELS_TEST_GAIN_DIR);
+}
 
 anira::Tensor host(float* data, std::initializer_list<std::int64_t> shape) {
-    return anira::Tensor::from_host(data, ANIRA_DTYPE_F32, std::span<const std::int64_t>(shape.begin(), shape.size()));
+    return anira::Tensor::from_host(data,
+                                    ANIRA_DTYPE_F32,
+                                    std::span<const std::int64_t>(shape.begin(), shape.size()));
 }
 
 anira::Tensor none() {
@@ -71,7 +78,7 @@ std::vector<float> ramp(std::size_t n, float start) {
 
 TEST(AsyncHandler, RewritesBufferTensorsAsWholeWindows) {
     anira::Context context{anira::ContextConfig{}};
-    core::AsyncHandler handler(context, k_gain_json, weights());
+    const core::AsyncHandler handler(context, k_gain_json, weights());
     const std::string& hard = handler.hard_description();
     EXPECT_NE(hard.find(R"("role":"streamed")"), std::string::npos) << hard;
     EXPECT_NE(hard.find(R"("max":512)"), std::string::npos) << hard;
@@ -131,13 +138,32 @@ TEST(AsyncHandler, AFullQueueRefusesASubmit) {
     const std::array<anira::Tensor, 2> inputs{host(in.data(), {1, 1, 512}), host(&gain, {1})};
 
     core::Ticket first = handler.submit(inputs);
-    core::Ticket refused = handler.submit(inputs);  // the first holds the only slot
+    const core::Ticket refused = handler.submit(inputs);  // the first holds the only slot
     EXPECT_EQ(refused.status(), core::TicketStatus::Failed);
     EXPECT_EQ(refused.error(), ANIRA_ERROR_CAPACITY);
     EXPECT_EQ(first.wait(), core::TicketStatus::Met);
     first = core::Ticket{};  // releases the slot
     core::Ticket again = handler.submit(inputs);
     EXPECT_EQ(again.wait(), core::TicketStatus::Met);
+}
+
+// A ticket that saw its job's status frees the only slot: the next submit, right after, is taken
+// (the worker publishes the status a moment before it lets go of the job).
+TEST(AsyncHandler, ASubmitRightAfterAWaitFindsTheSlotFree) {
+    anira::Context context{anira::ContextConfig{}};
+    core::AsyncHandler handler(context, k_gain_json, weights());
+    handler.prepare(anira::Async{.max_in_flight = 1});
+    std::vector<float> out(512);
+    float peak = 0.0f;
+    handler.bind_output(0, host(out.data(), {1, 1, 512}));
+    handler.bind_output(1, host(&peak, {1}));
+    std::vector<float> in = ramp(512, 1.0f);
+    float gain = 2.0f;
+    const std::array<anira::Tensor, 2> inputs{host(in.data(), {1, 1, 512}), host(&gain, {1})};
+    for (int k = 0; k < 2000; ++k) {
+        core::Ticket ticket = handler.submit(inputs);
+        ASSERT_EQ(ticket.wait(), core::TicketStatus::Met) << "job " << k << " " << ticket.error();
+    }
 }
 
 TEST(AsyncHandler, OnLateDropDropsAJobPastItsDeadlineAndStaysInStep) {
@@ -170,10 +196,11 @@ TEST(AsyncHandler, OnLateDropDropsAJobPastItsDeadlineAndStaysInStep) {
 TEST(AsyncHandler, PollRunsTheCallbacksInOrder) {
     anira::Context context{anira::ContextConfig{}};
     core::AsyncHandler handler(context, k_accumulator_json, weights());
-    std::vector<std::intptr_t> seen;
+    std::array<int, 4> cookies{1, 2, 3, 4};  // each job's user pointer
+    std::vector<int> seen;
     handler.on_complete([&](void* user, core::TicketStatus status) {
         EXPECT_EQ(status, core::TicketStatus::Met);
-        seen.push_back(reinterpret_cast<std::intptr_t>(user));
+        seen.push_back(*static_cast<int*>(user));
     });
     handler.prepare(anira::Async{.max_in_flight = 8});
     std::vector<float> out(64);
@@ -181,11 +208,10 @@ TEST(AsyncHandler, PollRunsTheCallbacksInOrder) {
     std::vector<float> in = ramp(64, 0.0f);
     const std::array<anira::Tensor, 2> inputs{none(), host(in.data(), {1, 1, 64})};
     std::vector<core::Ticket> tickets;
-    for (std::intptr_t k = 1; k <= 4; ++k) {
-        tickets.push_back(handler.submit(inputs, {}, {}, reinterpret_cast<void*>(k)));
-    }
+    tickets.reserve(cookies.size());
+    for (int& cookie : cookies) { tickets.push_back(handler.submit(inputs, {}, {}, &cookie)); }
     for (core::Ticket& ticket : tickets) { ticket.wait(); }
     EXPECT_EQ(handler.poll(), 4U);
-    EXPECT_EQ(seen, (std::vector<std::intptr_t>{1, 2, 3, 4}));
+    EXPECT_EQ(seen, (std::vector<int>{1, 2, 3, 4}));
     EXPECT_EQ(handler.poll(), 0U);
 }

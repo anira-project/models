@@ -11,8 +11,10 @@
 #include <anira/anira.hpp>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iterator>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <set>
 #include <string>
 #include <vector>
