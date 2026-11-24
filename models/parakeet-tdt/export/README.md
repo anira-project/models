@@ -6,6 +6,7 @@ From NeMo (`parakeet.py`), a uv project of its own (`pyproject.toml`, `uv.lock`)
 uv run export_executorch.py <folder> [--coreml] <audio.wav>...
 uv run export_coreml.py <folder> <audio.wav>...
 uv run check.py <audio.wav>...        # the ONNX export against NeMo
+uv run quantize_encoder.py <folder with encoder-model.onnx and .data> encoder-model.q4.onnx
 ```
 
 Run from this directory. The weights go to Hugging Face, anira-project/parakeet-tdt-0.6b-v3, whose README names the

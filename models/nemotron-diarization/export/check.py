@@ -5,7 +5,7 @@ streaming forward (float32) over the same chunks.
 
     uv run check.py <audio.wav>...      checks the ONNX export in this repository (q4) against transformers
 
-Test audio: 16 kHz mono recordings with several speakers (macOS: say with different voices, joined).
+Test audio: 16 kHz mono recordings with several speakers (make_test_audio.py joins LibriSpeech utterances).
 """
 
 import os

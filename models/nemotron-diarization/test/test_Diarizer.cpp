@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// Nemotron 3 Diarization (ONNX, q4) on a recording of two synthetic voices (macOS say: Samantha,
-// Daniel, Samantha again, 0.5 s apart; made for this test, in test/ of the weights' HF repository):
-// two speakers, in the right order, each turn where that voice speaks. The tests need
+// Nemotron 3 Diarization (ONNX, q4) on a recording of two speakers (three LibriSpeech dev-clean
+// utterances, CC BY 4.0: a woman, a man, the woman again, 0.5 s apart; made by
+// export/make_test_audio.py, in test/ of the weights' HF repository, revision 23e7f4f): two speakers, in the right
+// order, each turn where that voice speaks. The tests need
 // ANIRA_MODELS_TEST_WEIGHTS/nemotron-3-diarization with onnx/ and test/; without it they skip.
 
 #include <anira/models/core/ModelSource.h>
@@ -67,9 +68,9 @@ struct Voice {
     std::int64_t m_start;
     std::int64_t m_end;
 };
-constexpr std::array<Voice, 3> k_voices{{{.m_speaker = 0, .m_start = 0, .m_end = 92381},
-                                         {.m_speaker = 1, .m_start = 100381, .m_end = 206817},
-                                         {.m_speaker = 0, .m_start = 214817, .m_end = 286493}}};
+constexpr std::array<Voice, 3> k_voices{{{.m_speaker = 0, .m_start = 0, .m_end = 108800},
+                                         {.m_speaker = 1, .m_start = 116800, .m_end = 275200},
+                                         {.m_speaker = 0, .m_start = 283200, .m_end = 395440}}};
 constexpr std::int64_t k_tolerance = 16000;  // 1 s at a turn's edges
 
 }  // namespace
@@ -79,8 +80,16 @@ TEST(Diarizer, FindsTwoSpeakersAndTheirTurns) {
     if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3-diarization is missing"; }
     const std::vector<float> audio = read_wav(*dir / "test" / "two_speakers_16k.wav");
     anira::Context context{anira::ContextConfig{}};
-    const std::vector<core::Segment> turns =
-        nd::Diarizer::run(context, core::ModelSource::directory(*dir), audio, 16000.0);
+    // A pause within an utterance may split its turn: one speaker's turns less than 1 s apart are one.
+    std::vector<core::Segment> turns;
+    for (const core::Segment& turn : nd::Diarizer::run(context, core::ModelSource::directory(*dir), audio, 16000.0)) {
+        if (!turns.empty() && turns.back().m_speaker == turn.m_speaker &&
+            turn.m_start_sample - turns.back().m_end_sample < k_tolerance) {
+            turns.back().m_end_sample = turn.m_end_sample;
+        } else {
+            turns.push_back(turn);
+        }
+    }
     ASSERT_EQ(turns.size(), k_voices.size());
     for (std::size_t i = 0; i < k_voices.size(); ++i) {
         EXPECT_EQ(turns[i].m_speaker, k_voices[i].m_speaker) << "turn " << i;
