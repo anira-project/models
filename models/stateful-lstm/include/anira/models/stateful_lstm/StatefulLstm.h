@@ -11,20 +11,18 @@
 
 namespace anira::models::stateful_lstm {
 
-/// The stateful LSTM (vackva/stateful-lstm): an LSTM guitar effect, 2048 samples per call, its
-/// state carried from call to call by anira (reset() clears it). Trained at 44.1 kHz (other host
-/// rates are resampled); mono, the result on every channel. prepare, process in place, reset,
-/// get_latency: core::AudioEffect.
+/// The stateful LSTM (vackva/stateful-lstm): an LSTM guitar effect, 2048 samples per inference, its
+/// state carried from inference to inference by anira (reset() clears it). anira's
+/// InferenceHandler with the model built in (core::AudioEffect): prepare, process, process_wait,
+/// reset, get_latency; at the host's rate, mono (the downmix in, every channel out).
 class StatefulLstm : public core::AudioEffect {
 public:
-    static constexpr double k_model_rate = 44100.0;
-
     /// The weights: the model's Hugging Face repository (a directory or embedded bytes).
     StatefulLstm(anira::Context& context, const core::ModelSource& weights)
         : core::AudioEffect(context,
                             core::load_model(k_stateful_lstm_model_json, weights),
                             anira::ContractHandle::from_json(k_stateful_lstm_contract_json),
-                            k_model_rate) {}
+                            nullptr) {}
 };
 
 }  // namespace anira::models::stateful_lstm

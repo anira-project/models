@@ -64,14 +64,18 @@ public:
     Diarizer(Diarizer&&) = delete;
     Diarizer& operator=(Diarizer&&) = delete;
 
-    /// Main thread, no process() running: the host's rate and largest block; starts the steps.
-    void prepare(double sample_rate, std::size_t max_block);
+    /// Main thread, no process() running: the host's rate and largest block; starts the steps. The
+    /// plan report (anira's prepare).
+    anira::PlanReport prepare(double sample_rate, std::size_t max_block);
     /// Main thread, neither process() nor the reader running: a new stream (the clock, the
     /// speakers and the queues).
     void reset();
 
     /// Audio thread. ANIRA_ERROR_CAPACITY when the steps fell so far behind that audio was lost.
     anira_status process(std::span<const float> mono) noexcept;
+    /// Audio thread: [channels, n] or [n] float host audio (downmixed), as anira's handler takes
+    /// it.
+    anira_status process(const anira::Tensor& audio) noexcept;
     /// Audio thread: the stream ends here; the frames still in the look-ahead are scored.
     void flush() noexcept;
 
@@ -81,6 +85,9 @@ public:
     [[nodiscard]] std::size_t dropped() const noexcept { return m_dropped.load(); }
     [[nodiscard]] std::size_t dropped_audio() const noexcept { return m_dropped_audio.load(); }
     [[nodiscard]] bool idle() const noexcept;
+    /// anira's plan report and plan, for the model.
+    [[nodiscard]] anira::PlanReport plan_report() const { return m_handler->plan_report(); }
+    anira_status set_plan(std::uint32_t plan) noexcept;
 
     /// The speaker turns of a recording.
     static std::vector<core::Segment> run(anira::Context& context,
@@ -118,6 +125,7 @@ private:
     std::size_t m_max_block = 0;
     thl::dsp_basics::Resampler m_resampler;
     std::vector<float> m_resampled;
+    std::vector<float> m_mono;  // a host tensor's downmix
     Block m_pending;
 
     core::SpscQueue<Block> m_audio;

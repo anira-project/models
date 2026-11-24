@@ -45,8 +45,9 @@ public:
     Moonshine(Moonshine&&) = delete;
     Moonshine& operator=(Moonshine&&) = delete;
 
-    /// Main thread, no process() running: the host's rate and largest block; starts decoding.
-    void prepare(double sample_rate, std::size_t max_block);
+    /// Main thread, no process() running: the host's rate and largest block; starts decoding. The
+    /// plan report (anira's prepare).
+    anira::PlanReport prepare(double sample_rate, std::size_t max_block);
     /// Main thread, neither process() nor the reader running: a new stream (the clock, the
     /// segment and the queues start over).
     void reset();
@@ -54,6 +55,9 @@ public:
     /// Audio thread. ANIRA_ERROR_CAPACITY when the decoder fell so far behind that audio was lost
     /// (counted in dropped_audio()).
     anira_status process(std::span<const float> mono) noexcept;
+    /// Audio thread: [channels, n] or [n] float host audio (downmixed), as anira's handler takes
+    /// it.
+    anira_status process(const anira::Tensor& audio) noexcept;
     /// Audio thread: the current segment ends after the audio given so far.
     void end_segment() noexcept;
 
@@ -69,6 +73,9 @@ public:
     [[nodiscard]] std::size_t failed() const noexcept { return m_failed.load(); }
     /// Whether the decoder has taken every queued block (for tests and offline use).
     [[nodiscard]] bool idle() const noexcept;
+    /// anira's plan report and plan, for both graphs (one plan index: they list the same engines).
+    [[nodiscard]] anira::PlanReport plan_report() const { return m_decoder.plan_report(); }
+    anira_status set_plan(std::uint32_t plan) noexcept;
 
     /// Every final segment of a recording.
     static std::vector<core::Segment> run(anira::Context& context,
@@ -96,7 +103,8 @@ private:
     std::size_t m_max_block = 0;
     thl::dsp_basics::Resampler m_resampler;
     std::vector<float> m_resampled;
-    Block m_pending;  // audio thread: the block being filled
+    std::vector<float> m_mono;  // a host tensor's downmix
+    Block m_pending;            // audio thread: the block being filled
 
     core::SpscQueue<Block> m_audio;
     core::SpscQueue<core::Segment> m_segments;

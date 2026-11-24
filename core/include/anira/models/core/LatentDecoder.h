@@ -4,31 +4,22 @@
 
 #include <anira/anira.h>
 #include <anira/models/core/Latents.h>
-#include <anira/models/core/Latest.h>
-#include <tanh/dsp-basics/Resampler.h>
 
 #include <anira/anira.hpp>
 #include <array>
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <span>
 #include <vector>
 
 namespace anira::models::core {
 
-namespace detail {
-class HostDelay;
-}  // namespace detail
-
-/// The decoder of an audio autoencoder (RAVE) as a generator: latents in (set by one control
-/// thread, a UI or a hand tracker, held until the next ones), audio out at the host's rate (the
-/// model runs at its own, resampled), the same on every channel. Shaped like anira's
-/// InferenceHandler: prepare, process, reset, get_latency.
-///
-/// A model whose latents are a streamed input gets the held latents at the latents' rate; one
-/// whose latents are a Static input gets them before each call.
+/// The decoder of an audio autoencoder (RAVE) as anira's InferenceHandler with the model built in,
+/// at the host's rate as anira's RAVE example runs it (anchored on its audio): push_data (latent
+/// frames, one per hop() samples: frames_due(n) before popping n samples), pop_data (the audio,
+/// the same on every channel), pop_data_wait, reset, get_latency, plan_report, set_plan,
+/// rt_error. A model whose latents are a Static input takes the last frame pushed for its next
+/// inferences.
 class LatentDecoder {
 public:
     LatentDecoder(const LatentDecoder&) = delete;
@@ -36,49 +27,47 @@ public:
     LatentDecoder(LatentDecoder&&) = delete;
     LatentDecoder& operator=(LatentDecoder&&) = delete;
 
-    /// Main thread, no process() running: the model's own Hard contract with the host's rate and
-    /// largest block. Starts a new stream.
-    anira::PlanReport prepare(double sample_rate, std::size_t max_block);
-    /// Main thread, no process() running: a new stream (the model's state, the resampler and the
-    /// delay line start from silence; the latents stay).
+    /// Main thread, no push or pop running: the model's own Hard contract completed with the
+    /// host's rate and block range (of audio samples), then anira's prepare. A new stream.
+    anira::PlanReport prepare(double sample_rate, std::size_t max_block, std::size_t min_block = 1);
+    /// Main thread, no push or pop running: a new stream.
     void reset();
 
-    /// The control thread (one): the latents from now on, the first dims() of `values` (missing
-    /// ones are 0).
-    void set_latents(std::span<const float> values) noexcept;
+    /// Audio thread, anira's push_data: latent frames, [dims(), n] float host memory.
+    anira_status push_data(const anira::Tensor& latents) noexcept;
+    /// Audio thread: one frame, its first dims() values.
+    anira_status push_data(std::span<const float> frame) noexcept;
+    /// Audio thread: the frames to push before popping the next `samples` samples (one per hop()
+    /// samples, counted from reset()).
+    [[nodiscard]] std::size_t frames_due(std::size_t samples) const noexcept;
+    /// Audio thread, anira's pop_data: `audio` ([channels, n] or [n], float host memory, n at most
+    /// the prepared maximum) written, the same on every channel.
+    anira_status pop_data(const anira::Tensor& audio, std::size_t* delivered = nullptr) noexcept;
+    anira_status pop_data(std::span<float> mono) noexcept;
+    anira_status pop_data_wait(const anira::Tensor& audio,
+                               double timeout_ms,
+                               std::size_t* delivered = nullptr) noexcept;
 
-    /// Audio thread: `audio` ([channels, n] or [n], float, host memory, planar or packed, n at
-    /// most the prepared maximum) is written, the same on every channel. ANIRA_MISSED when anira's
-    /// miss policy filled a late block.
-    anira_status process(const anira::Tensor& audio) noexcept;
-    anira_status process(std::span<float> mono) noexcept;
-
-    /// Main thread after prepare(), no process() running: `samples` host samples as a new stream,
-    /// each frame's latents from its m_position on (the frames in order), without the latency
-    /// (anira waits for each block).
+    /// Main thread after prepare(), no push or pop running: `samples` samples from `frames` (one
+    /// per hop(), the last one held), as a new stream, without the latency.
     std::vector<float> run(std::span<const Latents> frames, std::size_t samples);
 
-    /// Host samples from set_latents() to their sound; fixed after prepare().
-    [[nodiscard]] std::size_t get_latency() const noexcept { return m_latency; }
-    [[nodiscard]] std::uint32_t dims() const noexcept { return m_dims; }
+    /// anira's latency in samples.
+    [[nodiscard]] std::size_t get_latency() const noexcept {
+        return m_handler.get_latency(m_stream.m_audio_slot);
+    }
+    [[nodiscard]] std::size_t hop() const noexcept { return m_stream.m_hop; }
+    [[nodiscard]] std::uint32_t dims() const noexcept { return m_stream.m_dims; }
     [[nodiscard]] double sample_rate() const noexcept { return m_host_rate; }
-    [[nodiscard]] double model_rate() const noexcept { return m_model_rate; }
     [[nodiscard]] anira::PlanReport plan_report() const noexcept { return m_handler.plan_report(); }
     anira_status set_plan(std::uint32_t plan) noexcept { return m_handler.set_plan(plan); }
     [[nodiscard]] anira_status rt_error() const noexcept { return m_handler.rt_error(); }
-    void set_non_realtime(bool non_realtime) noexcept {
-        m_non_realtime.store(non_realtime, std::memory_order_relaxed);
-    }
-    [[nodiscard]] bool non_realtime() const noexcept {
-        return m_non_realtime.load(std::memory_order_relaxed);
-    }
 
 protected:
     struct Stream {
-        double m_model_rate = 44100.0;
         std::uint32_t m_dims = 0;
-        /// Latent frames per model audio sample; 0: the latents are a Static input.
-        double m_latents_per_sample = 0.0;
+        std::size_t m_hop = 0;            ///< samples per latent frame
+        bool m_static_latents = false;    ///< the latents are a Static input ([1, dims, 1])
         std::uint32_t m_latent_slot = 0;  ///< the latents' input slot
         std::uint32_t m_audio_slot = 0;   ///< the audio's output slot
     };
@@ -87,7 +76,7 @@ protected:
                   anira::ModelConfig model,
                   anira::ContractHandle contract,
                   Stream stream);
-    ~LatentDecoder();
+    ~LatentDecoder() = default;
 
     anira::InferenceHandler& handler() noexcept { return m_handler; }
     /// Constructor: the value of another Static input (float32, `shape`), given at every prepare().
@@ -102,33 +91,25 @@ private:
         std::vector<float> m_values;
     };
 
-    anira_status generate(std::size_t model_samples) noexcept;
+    template <bool Wait>
+    anira_status pop_block(const anira::Tensor& audio,
+                           double timeout_ms,
+                           std::size_t* delivered) noexcept;
 
     anira::ModelConfig m_model;  // outlives the handler: borrowed weights
     anira::ContractHandle m_contract;
     Stream m_stream;
-    std::uint32_t m_dims;
-    double m_model_rate;
     anira::InferenceHandler m_handler;
     std::vector<StaticInput> m_statics;
 
-    Latest<std::array<float, k_max_latents>> m_latents;
     double m_host_rate = 0.0;
     std::size_t m_max_block = 0;
-    std::size_t m_latency = 0;
-    thl::dsp_basics::Resampler m_up;
-    std::vector<float> m_model_audio;
-    std::vector<float> m_up_audio;
+    std::vector<float> m_mono;
     std::array<float*, 1> m_plane{};
-    anira::Tensor m_audio_tensor{};
-    std::vector<float> m_latent_block;  // [dims, n] packed: the held latents n times
     std::array<float, k_max_latents> m_static_latents{};
-    std::vector<std::int64_t> m_static_shape;
-    std::unique_ptr<detail::HostDelay> m_delay;
-    std::int64_t m_host_samples = 0;   // since reset()
-    std::int64_t m_model_samples = 0;  // generated since reset()
-    std::int64_t m_latent_frames = 0;  // pushed since reset()
-    std::atomic<bool> m_non_realtime{false};
+    std::array<std::int64_t, 3> m_static_shape{};
+    std::int64_t m_pushed = 0;  // frames since reset()
+    std::int64_t m_popped = 0;  // samples since reset()
 };
 
 }  // namespace anira::models::core

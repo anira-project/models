@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // The effect wrappers (core::AudioEffect, header-only per model) on their weights: each prepares
-// at 48 kHz (resampled to the 44.1 kHz it was trained at), runs a plucked-string test signal and
+// at 48 kHz (the host's rate, as anira's examples run them), runs a plucked-string test signal and
 // gives a finite, audible result after its latency; a reset() and the same signal give the same
 // result again (a stateful model starts from zero state). Each needs
 // ANIRA_MODELS_TEST_WEIGHTS/<its HF repository> with its ONNX files; without them it skips.
@@ -98,8 +98,10 @@ void check(core::AudioEffect& effect) {
                 std::sqrt(energy / static_cast<double>(first.size())));
 }
 
-// A RAVE model's encoder and decoder: the plucks' latent frames, one per hop at their host
-// positions, and the decoder's audio from them (offline, then live with set_latents).
+// A RAVE model's encoder and decoder: the plucks' latent frames, one per hop at their positions,
+// and the decoder's audio from them; then both chained block by block as in anira's RAVE example
+// (push the block into the encoder, pop its due frames into the decoder, pop the block's audio),
+// on two channels.
 template <class Encoder, class Decoder>
 void check_latents(const fs::path& dir, std::size_t hop, std::uint32_t dims) {
     anira::Context context{anira::ContextConfig{}};
@@ -107,17 +109,14 @@ void check_latents(const fs::path& dir, std::size_t hop, std::uint32_t dims) {
     encoder.prepare(k_rate, 512);
     const std::vector<float> input = plucks();
     const std::vector<core::Latents> frames = encoder.run(input);
-    const double frame_host = static_cast<double>(hop) * k_rate / 44100.0;
     EXPECT_NEAR(static_cast<double>(frames.size()),
-                static_cast<double>(input.size()) / frame_host,
-                1.5);
+                static_cast<double>(input.size()) / static_cast<double>(hop),
+                1.0);
     ASSERT_FALSE(frames.empty());
     float spread = 0.0F;
     for (std::size_t i = 0; i < frames.size(); ++i) {
         ASSERT_EQ(frames[i].m_count, dims);
-        EXPECT_NEAR(static_cast<double>(frames[i].m_position),
-                    static_cast<double>(i) * frame_host,
-                    1.0);
+        EXPECT_EQ(frames[i].m_position, static_cast<std::int64_t>(i * hop));
         for (std::uint32_t c = 0; c < dims; ++c) {
             ASSERT_TRUE(std::isfinite(frames[i].m_values[c]));
             spread = std::max(spread, std::abs(frames[i].m_values[c] - frames[0].m_values[c]));
@@ -136,32 +135,40 @@ void check_latents(const fs::path& dir, std::size_t hop, std::uint32_t dims) {
     }
     EXPECT_GT(energy / static_cast<double>(output.size()), 1e-8) << "silent";
 
-    // Live: held latents, any host block, two channels.
+    encoder.reset();
     decoder.reset();
-    decoder.set_non_realtime(true);  // the loop runs faster than real time
-    decoder.set_latents(std::span<const float>(frames[frames.size() / 2].m_values.data(), dims));
-    std::vector<float> left(48000, 0.0F);
-    std::vector<float> right(left.size(), 1.0F);
-    double live = 0.0;
+    std::vector<float> left = input;
+    std::vector<float> right = input;
+    double chained = 0.0;
     for (std::size_t start = 0, k = 0; start < left.size(); ++k) {
         const std::size_t count = std::min<std::size_t>(k % 2 == 0 ? 512 : 37, left.size() - start);
         std::array<float*, 2> planes{left.data() + start, right.data() + start};
         const anira::Tensor stereo = anira::Tensor::from_host_planar<float>(
             std::span<float* const>(planes),
             std::array<std::int64_t, 2>{2, static_cast<std::int64_t>(count)});
-        ASSERT_FALSE(ANIRA_FAILED(decoder.process(stereo)));
+        ASSERT_FALSE(ANIRA_FAILED(encoder.push_data(stereo)));
+        while (encoder.frames_due() > 0) {
+            core::Latents latents;
+            ASSERT_FALSE(ANIRA_FAILED(encoder.pop_data_wait(latents, ANIRA_WAIT_FOREVER)));
+            ASSERT_FALSE(ANIRA_FAILED(
+                decoder.push_data(std::span<const float>(latents.m_values.data(), dims))));
+        }
+        ASSERT_FALSE(ANIRA_FAILED(decoder.pop_data_wait(stereo, ANIRA_WAIT_FOREVER)));
         start += count;
     }
     for (std::size_t i = 0; i < left.size(); ++i) {
         ASSERT_EQ(left[i], right[i]);
-        live += static_cast<double>(left[i]) * left[i];
+        chained += static_cast<double>(left[i]) * left[i];
     }
-    EXPECT_GT(live / static_cast<double>(left.size()), 1e-8) << "silent live";
-    std::printf("[ info ] %zu frames; decoder latency %zu samples, rms %.4f offline, %.4f live\n",
-                frames.size(),
-                decoder.get_latency(),
-                std::sqrt(energy / static_cast<double>(output.size())),
-                std::sqrt(live / static_cast<double>(left.size())));
+    EXPECT_GT(chained / static_cast<double>(left.size()), 1e-8) << "silent chained";
+    std::printf(
+        "[ info ] %zu frames; latency: encoder %zu frames, decoder %zu samples; rms %.4f "
+        "offline, %.4f chained\n",
+        frames.size(),
+        encoder.get_latency(),
+        decoder.get_latency(),
+        std::sqrt(energy / static_cast<double>(output.size())),
+        std::sqrt(chained / static_cast<double>(left.size())));
 }
 
 }  // namespace

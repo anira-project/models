@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <anira/anira.h>
+#include <anira/models/core/HostAudio.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
 #include <anira/models/moonshine_streaming/Moonshine.h>
@@ -43,14 +44,16 @@ void Moonshine::stop() {
     if (m_thread.joinable()) { m_thread.join(); }
 }
 
-void Moonshine::prepare(double sample_rate, std::size_t max_block) {
+anira::PlanReport Moonshine::prepare(double sample_rate, std::size_t max_block) {
     stop();
-    m_decoder.prepare();
+    anira::PlanReport report = m_decoder.prepare();
     m_host_rate = sample_rate;
     m_max_block = max_block;
+    m_mono.assign(max_block, 0.0F);
     m_resampler.prepare(sample_rate, k_sample_rate, max_block);
     m_resampled.assign(m_resampler.max_output(max_block), 0.0F);
     reset();
+    return report;
 }
 
 void Moonshine::reset() {
@@ -72,6 +75,16 @@ void Moonshine::reset() {
     m_decoder.begin();
     m_running.store(true);
     m_thread = std::thread([this] { decode_loop(); });
+}
+
+anira_status Moonshine::process(const anira::Tensor& audio) noexcept {
+    const std::size_t n = core::samples(audio);
+    if (n > m_max_block || !core::downmix(audio, m_mono)) { return ANIRA_ERROR_INVALID_ARGUMENT; }
+    return process(std::span<const float>(m_mono.data(), n));
+}
+
+anira_status Moonshine::set_plan(std::uint32_t plan) noexcept {
+    return m_decoder.set_plan(plan);
 }
 
 anira_status Moonshine::process(std::span<const float> mono) noexcept {

@@ -173,11 +173,11 @@ SegmentDecoder::SegmentDecoder(anira::Context& context,
 
 SegmentDecoder::~SegmentDecoder() = default;
 
-void SegmentDecoder::prepare() {
+anira::PlanReport SegmentDecoder::prepare() {
     const auto l = static_cast<std::int64_t>(m_layers);
     const auto h = static_cast<std::int64_t>(m_heads);
     const auto k = static_cast<std::int64_t>(m_head_dim);
-    m_encoder->prepare(anira::Async{.max_in_flight = 1});
+    anira::PlanReport report = m_encoder->prepare(anira::Async{.max_in_flight = 1});
     m_encoder->bind_output(0, host(m_k_new.data(), ANIRA_DTYPE_F32, {l, 1, h, k_chunk, k}));
     m_encoder->bind_output(1, host(m_v_new.data(), ANIRA_DTYPE_F32, {l, 1, h, k_chunk, k}));
     m_decoder->prepare(anira::Async{.max_in_flight = 1});
@@ -187,6 +187,13 @@ void SegmentDecoder::prepare() {
     m_decoder->bind_output(1, host(m_k_token.data(), ANIRA_DTYPE_F32, {l, 1, h, 1, k}));
     m_decoder->bind_output(2, host(m_v_token.data(), ANIRA_DTYPE_F32, {l, 1, h, 1, k}));
     begin();
+    return report;
+}
+
+anira_status SegmentDecoder::set_plan(std::uint32_t plan) noexcept {
+    const anira_status encoder = m_encoder->set_plan(plan);
+    const anira_status decoder = m_decoder->set_plan(plan);
+    return ANIRA_FAILED(encoder) ? encoder : decoder;
 }
 
 void SegmentDecoder::begin() {

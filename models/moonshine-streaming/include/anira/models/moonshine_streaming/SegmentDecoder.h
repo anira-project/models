@@ -61,7 +61,11 @@ public:
     SegmentDecoder& operator=(SegmentDecoder&&) = delete;
 
     /// Main thread: both graphs' Async contracts (no deadline: every step is the transcript's).
-    void prepare();
+    /// The encoder's plan report (both graphs list the same engines: one plan index for both).
+    anira::PlanReport prepare();
+    /// Any thread: both graphs' plan.
+    anira_status set_plan(std::uint32_t plan) noexcept;
+    [[nodiscard]] anira::PlanReport plan_report() const { return m_encoder->plan_report(); }
     /// A new segment: the encoder's state and the memory start over.
     void begin();
     /// The next 0.5 s (k_step samples, 16 kHz). Returns false once the segment is full.

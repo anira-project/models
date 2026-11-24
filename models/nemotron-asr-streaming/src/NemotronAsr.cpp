@@ -3,6 +3,7 @@
 #include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/Error.h>
+#include <anira/models/core/HostAudio.h>
 #include <anira/models/core/LogMel.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
@@ -144,9 +145,9 @@ void NemotronAsr::stop() {
     if (m_thread.joinable()) { m_thread.join(); }
 }
 
-void NemotronAsr::prepare(double sample_rate, std::size_t max_block) {
+anira::PlanReport NemotronAsr::prepare(double sample_rate, std::size_t max_block) {
     stop();
-    m_encoder->prepare(anira::Async{.max_in_flight = 1});
+    anira::PlanReport report = m_encoder->prepare(anira::Async{.max_in_flight = 1});
     m_encoder->bind_output(0,
                            host(m_encoded.data(), ANIRA_DTYPE_F32, {1, k_step_frames, k_hidden}));
     m_encoder->bind_output(1, host(&m_encoded_length, ANIRA_DTYPE_I64, {1}));
@@ -158,11 +159,13 @@ void NemotronAsr::prepare(double sample_rate, std::size_t max_block) {
     m_joint->bind_output(0, host(m_logits.data(), ANIRA_DTYPE_F32, {1, 1, 1, k_vocab}));
     m_host_rate = sample_rate;
     m_max_block = max_block;
+    m_mono.assign(max_block, 0.0F);
     m_resampler.prepare(sample_rate, k_sample_rate, max_block);
     m_resampled.assign(m_resampler.max_output(max_block), 0.0F);
     m_mel.prepare(k_block);
     m_new_mels.assign(core::LogMel::max_frames(k_block) * k_mels, 0.0F);
     reset();
+    return report;
 }
 
 void NemotronAsr::reset() {
@@ -198,6 +201,20 @@ void NemotronAsr::start_over() {
     std::ranges::fill(m_h, 0.0F);
     std::ranges::fill(m_c, 0.0F);
     run_decoder(k_blank);
+}
+
+anira_status NemotronAsr::process(const anira::Tensor& audio) noexcept {
+    const std::size_t n = core::samples(audio);
+    if (n > m_max_block || !core::downmix(audio, m_mono)) { return ANIRA_ERROR_INVALID_ARGUMENT; }
+    return process(std::span<const float>(m_mono.data(), n));
+}
+
+anira_status NemotronAsr::set_plan(std::uint32_t plan) noexcept {
+    anira_status status = m_encoder->set_plan(plan);
+    for (const anira_status other : {m_decoder->set_plan(plan), m_joint->set_plan(plan)}) {
+        if (ANIRA_FAILED(other)) { status = other; }
+    }
+    return status;
 }
 
 anira_status NemotronAsr::process(std::span<const float> mono) noexcept {
