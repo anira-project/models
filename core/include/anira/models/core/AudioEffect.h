@@ -10,10 +10,15 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <vector>
 
 namespace anira::models::core {
+
+namespace detail {
+class HostDelay;
+}  // namespace detail
 
 /// A model that changes the sound (an amp, a compressor, a RAVE timbre transfer), shaped like
 /// anira's InferenceHandler: prepare, process in place, reset, get_latency. One anira handler over
@@ -75,7 +80,7 @@ protected:
                 anira::ModelConfig model,
                 anira::ContractHandle contract,
                 double model_rate);
-    ~AudioEffect() = default;
+    ~AudioEffect();
 
     anira::InferenceHandler& handler() noexcept { return m_handler; }
     /// Constructor: the value of a Static input (float32, `shape`), given to anira at every
@@ -91,8 +96,6 @@ private:
         std::vector<float> m_values;
     };
 
-    void size_delay();
-
     anira::ModelConfig m_model;  // outlives the handler: borrowed weights
     anira::ContractHandle m_contract;
     double m_model_rate;
@@ -101,7 +104,6 @@ private:
     double m_host_rate = 0.0;
     std::size_t m_max_block = 0;
     std::size_t m_latency = 0;
-    std::size_t m_prime = 0;  // zeros in front of the delay line: it never runs dry
     thl::dsp_basics::Resampler m_down;
     thl::dsp_basics::Resampler m_up;
     std::vector<float> m_mono;
@@ -109,9 +111,7 @@ private:
     std::vector<float> m_up_audio;
     std::array<float*, 1> m_plane{};
     anira::Tensor m_model_tensor{};
-    std::vector<float> m_delay;  // a ring: the model's output at the host's rate, not yet given
-    std::size_t m_read = 0;
-    std::size_t m_fill = 0;
+    std::unique_ptr<detail::HostDelay> m_delay;  // the output at the host's rate, not yet given
     std::atomic<bool> m_non_realtime{false};
     std::vector<StaticInput> m_statics;
 };

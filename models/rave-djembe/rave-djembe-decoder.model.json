@@ -8,6 +8,7 @@
     {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_decoder_coreml.pte"}
   ],
   "state": "stateful",
+  "anchor": "audio_out",
   "inputs": [
     {"name": "latent_in", "dtype": "float32", "role": "streamed", "axes": [["batch", 1], ["channel", 2], ["time", 8]], "window": {"min": 8, "max": 8}},
     {"name": "state_in", "dtype": "float32", "role": "state", "axes": [["batch", 1], ["any", 154464]], "state_source": "state_out"},

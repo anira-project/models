@@ -12,10 +12,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <span>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "HostDelay.h"
 
 namespace anira::models::core {
 
@@ -92,7 +95,10 @@ AudioEffect::AudioEffect(anira::Context& context,
     : m_model(std::move(model))
     , m_contract(std::move(contract))
     , m_model_rate(model_rate)
-    , m_handler(context, anira::Pipeline().add_inference(m_model)) {}
+    , m_handler(context, anira::Pipeline().add_inference(m_model))
+    , m_delay(std::make_unique<detail::HostDelay>()) {}
+
+AudioEffect::~AudioEffect() = default;
 
 anira::PlanReport AudioEffect::prepare(double sample_rate,
                                        std::size_t max_block,
@@ -128,9 +134,8 @@ anira::PlanReport AudioEffect::prepare(double sample_rate,
         std::array<int64_t, 2>{1, static_cast<int64_t>(model_max)});
 
     const PathTiming timing = path_timing(sample_rate, m_model_rate, m_handler.get_latency(0));
-    m_prime = timing.m_prime;
     m_latency = timing.m_latency;
-    m_delay.assign(m_prime + max_block + m_up_audio.size() + 1, 0.0F);
+    m_delay->assign(timing.m_prime, max_block + m_up_audio.size());
     reset();
     return report;
 }
@@ -146,13 +151,7 @@ void AudioEffect::reset() {
     m_handler.reset();
     m_down.reset();
     m_up.reset();
-    size_delay();
-}
-
-void AudioEffect::size_delay() {
-    std::ranges::fill(m_delay, 0.0F);
-    m_read = 0;
-    m_fill = m_prime;
+    m_delay->reset();
 }
 
 anira_status AudioEffect::process(std::span<float> mono) noexcept {
@@ -168,7 +167,7 @@ anira_status AudioEffect::process(const anira::Tensor& audio) noexcept {
     const auto channels =
         audio.ndim == 1 ? std::uint32_t{1} : static_cast<std::uint32_t>(audio.shape[0]);
     const auto samples = static_cast<std::size_t>(audio.shape[audio.ndim - 1]);
-    if (channels == 0 || samples > m_max_block || m_delay.empty()) {
+    if (channels == 0 || samples > m_max_block || m_delay->empty()) {
         return ANIRA_ERROR_INVALID_ARGUMENT;
     }
 
@@ -197,20 +196,9 @@ anira_status AudioEffect::process(const anira::Tensor& audio) noexcept {
             m_up.process(std::span<const float>(m_model_audio.data(), model_samples), m_up_audio);
     }
 
-    const std::size_t size = m_delay.size();
-    for (std::size_t i = 0; i < made && m_fill < size; ++i, ++m_fill) {
-        m_delay[(m_read + m_fill) % size] = m_up_audio[i];
-    }
+    m_delay->write(std::span<const float>(m_up_audio.data(), made));
     float* first = channel(audio, 0);
-    for (std::size_t i = 0; i < samples; ++i) {
-        if (m_fill > 0) {
-            first[i] = m_delay[m_read];
-            m_read = (m_read + 1) % size;
-            --m_fill;
-        } else {
-            first[i] = 0.0F;  // never: the prime covers the most the path owes
-        }
-    }
+    m_delay->read(std::span<float>(first, samples));
     for (std::uint32_t c = 1; c < channels; ++c) { std::copy_n(first, samples, channel(audio, c)); }
     return status;
 }

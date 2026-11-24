@@ -6,7 +6,9 @@
 // result again (a stateful model starts from zero state). Each needs
 // ANIRA_MODELS_TEST_WEIGHTS/<its HF repository> with its ONNX files; without them it skips.
 
+#include <anira/anira.h>
 #include <anira/models/core/AudioEffect.h>
+#include <anira/models/core/Latents.h>
 #include <anira/models/core/ModelSource.h>
 #include <gtest/gtest.h>
 
@@ -15,11 +17,13 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <numbers>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -92,6 +96,72 @@ void check(core::AudioEffect& effect) {
     std::printf("[ info ] latency %zu samples at 48 kHz, rms %.4f\n",
                 effect.get_latency(),
                 std::sqrt(energy / static_cast<double>(first.size())));
+}
+
+// A RAVE model's encoder and decoder: the plucks' latent frames, one per hop at their host
+// positions, and the decoder's audio from them (offline, then live with set_latents).
+template <class Encoder, class Decoder>
+void check_latents(const fs::path& dir, std::size_t hop, std::uint32_t dims) {
+    anira::Context context{anira::ContextConfig{}};
+    Encoder encoder(context, core::ModelSource::directory(dir));
+    encoder.prepare(k_rate, 512);
+    const std::vector<float> input = plucks();
+    const std::vector<core::Latents> frames = encoder.run(input);
+    const double frame_host = static_cast<double>(hop) * k_rate / 44100.0;
+    EXPECT_NEAR(static_cast<double>(frames.size()),
+                static_cast<double>(input.size()) / frame_host,
+                1.5);
+    ASSERT_FALSE(frames.empty());
+    float spread = 0.0F;
+    for (std::size_t i = 0; i < frames.size(); ++i) {
+        ASSERT_EQ(frames[i].m_count, dims);
+        EXPECT_NEAR(static_cast<double>(frames[i].m_position),
+                    static_cast<double>(i) * frame_host,
+                    1.0);
+        for (std::uint32_t c = 0; c < dims; ++c) {
+            ASSERT_TRUE(std::isfinite(frames[i].m_values[c]));
+            spread = std::max(spread, std::abs(frames[i].m_values[c] - frames[0].m_values[c]));
+        }
+    }
+    EXPECT_GT(spread, 1e-3F) << "the latents never change";
+
+    Decoder decoder(context, core::ModelSource::directory(dir));
+    decoder.prepare(k_rate, 512);
+    const std::vector<float> output = decoder.run(frames, input.size());
+    ASSERT_EQ(output.size(), input.size());
+    double energy = 0.0;
+    for (const float x : output) {
+        ASSERT_TRUE(std::isfinite(x));
+        energy += static_cast<double>(x) * x;
+    }
+    EXPECT_GT(energy / static_cast<double>(output.size()), 1e-8) << "silent";
+
+    // Live: held latents, any host block, two channels.
+    decoder.reset();
+    decoder.set_non_realtime(true);  // the loop runs faster than real time
+    decoder.set_latents(std::span<const float>(frames[frames.size() / 2].m_values.data(), dims));
+    std::vector<float> left(48000, 0.0F);
+    std::vector<float> right(left.size(), 1.0F);
+    double live = 0.0;
+    for (std::size_t start = 0, k = 0; start < left.size(); ++k) {
+        const std::size_t count = std::min<std::size_t>(k % 2 == 0 ? 512 : 37, left.size() - start);
+        std::array<float*, 2> planes{left.data() + start, right.data() + start};
+        const anira::Tensor stereo = anira::Tensor::from_host_planar<float>(
+            std::span<float* const>(planes),
+            std::array<std::int64_t, 2>{2, static_cast<std::int64_t>(count)});
+        ASSERT_FALSE(ANIRA_FAILED(decoder.process(stereo)));
+        start += count;
+    }
+    for (std::size_t i = 0; i < left.size(); ++i) {
+        ASSERT_EQ(left[i], right[i]);
+        live += static_cast<double>(left[i]) * left[i];
+    }
+    EXPECT_GT(live / static_cast<double>(left.size()), 1e-8) << "silent live";
+    std::printf("[ info ] %zu frames; decoder latency %zu samples, rms %.4f offline, %.4f live\n",
+                frames.size(),
+                decoder.get_latency(),
+                std::sqrt(energy / static_cast<double>(output.size())),
+                std::sqrt(live / static_cast<double>(left.size())));
 }
 
 }  // namespace
@@ -169,5 +239,43 @@ TEST(Effects, RaveMagneticResonatorPiano) {
         core::ModelSource::directory(*dir));
     effect.prepare(k_rate, 512);
     check(effect);
+}
+#endif
+
+#ifdef ANIRA_MODELS_HAS_RAVE_DJEMBE
+TEST(Effects, RaveDjembeEncoderAndDecoder) {
+    const auto dir = weights_dir("rave-djembe", "onnx/rave_decoder.onnx");
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/rave-djembe is missing (encoder, decoder)";
+    }
+    check_latents<anira::models::rave_djembe::RaveDjembeEncoder,
+                  anira::models::rave_djembe::RaveDjembeDecoder>(*dir, 128, 2);
+}
+#endif
+
+#ifdef ANIRA_MODELS_HAS_RAVE_FUNK_DRUM
+TEST(Effects, RaveFunkDrumEncoderAndDecoder) {
+    const auto dir = weights_dir("rave-funk-drum", "onnx/rave_funk_drum_decoder.onnx");
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/rave-funk-drum is missing (encoder, decoder)";
+    }
+    check_latents<anira::models::rave_funk_drum::RaveFunkDrumEncoder,
+                  anira::models::rave_funk_drum::RaveFunkDrumDecoder>(*dir, 2048, 4);
+}
+#endif
+
+#ifdef ANIRA_MODELS_HAS_RAVE_MAGNETIC_RESONATOR_PIANO
+TEST(Effects, RaveMagneticResonatorPianoEncoderAndDecoder) {
+    const auto dir =
+        weights_dir("rave-magnetic-resonator-piano", "onnx/mrp_strengjavera_decoder.onnx");
+    if (!dir) {
+        GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/rave-magnetic-resonator-piano is missing "
+                        "(encoder, decoder)";
+    }
+    check_latents<anira::models::rave_magnetic_resonator_piano::RaveMagneticResonatorPianoEncoder,
+                  anira::models::rave_magnetic_resonator_piano::RaveMagneticResonatorPianoDecoder>(
+        *dir,
+        2048,
+        8);
 }
 #endif

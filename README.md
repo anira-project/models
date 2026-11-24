@@ -10,7 +10,9 @@ The effects (GuitarLSTM, the stateful LSTM, steerable-nafx and the three RAVE mo
 each on `core::AudioEffect`: prepare, process in place, reset, get_latency, any channel count and
 host rate (resampled to the 44.1 kHz they were trained at), for example
 `anira::models::guitar_lstm::GuitarLstm` from `<anira/models/guitar_lstm/GuitarLstm.h>` with
-`ANIRA_MODELS_WITH_GUITAR_LSTM`.
+`ANIRA_MODELS_WITH_GUITAR_LSTM`. A RAVE header also has the model split: `<Name>Encoder`
+(`core::LatentEncoder`: audio in, latent frames out) and `<Name>Decoder` (`core::LatentDecoder`:
+latents in from a control thread, audio out).
 
 ## A model
 

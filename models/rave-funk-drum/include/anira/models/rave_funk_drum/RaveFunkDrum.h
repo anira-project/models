@@ -3,6 +3,8 @@
 #pragma once
 
 #include <anira/models/core/AudioEffect.h>
+#include <anira/models/core/LatentDecoder.h>
+#include <anira/models/core/LatentEncoder.h>
 #include <anira/models/core/Model.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/rave_funk_drum/Descriptions.h>
@@ -12,17 +14,26 @@
 #include <cstdint>
 #include <vector>
 
+/// RAVE funk drum, a RAVE model (weights CC BY-NC 4.0), trained at 44.1 kHz (other host rates are
+/// resampled), mono: 4 latents, one frame per 2048 samples at 44.1 kHz; the decoder takes them as a
+/// stream. Every graph carries its state through anira (reset() clears it); the noise inputs are
+/// zeros (the deterministic decode).
+///
+///   - RaveFunkDrum: the forward pass (encoder and decoder in one graph), a timbre transfer of the
+///   input,
+///     in place (core::AudioEffect).
+///   - RaveFunkDrumEncoder: audio in, latent frames out (core::LatentEncoder).
+///   - RaveFunkDrumDecoder: latents in, audio out (core::LatentDecoder), e.g. from a hand tracker
+///   or the
+///     encoder of another model.
 namespace anira::models::rave_funk_drum {
 
-/// RAVE funk drum, a RAVE model (weights CC BY-NC 4.0): the streaming forward pass (the encoder and
-/// the decoder in one graph, their state carried by anira; reset() clears it) as a timbre transfer
-/// of the input. Trained at 44.1 kHz (other host rates are resampled); mono, the result on every
-/// channel. The noise inputs are zeros: the deterministic decode. prepare, process in place,
-/// reset, get_latency: core::AudioEffect.
+inline constexpr double k_model_rate = 44100.0;
+inline constexpr std::uint32_t k_latents = 4;
+inline constexpr std::size_t k_hop = 2048;  ///< model samples per latent frame
+
 class RaveFunkDrum : public core::AudioEffect {
 public:
-    static constexpr double k_model_rate = 44100.0;
-
     /// The weights: the model's Hugging Face repository (a directory or embedded bytes).
     RaveFunkDrum(anira::Context& context, const core::ModelSource& weights)
         : core::AudioEffect(
@@ -30,6 +41,35 @@ public:
               core::load_model(k_rave_funk_drum_forward_model_json, weights),
               anira::ContractHandle::from_json(k_rave_funk_drum_forward_contract_json),
               k_model_rate) {
+        keep_static_input(2, {1, 12, 1}, std::vector<float>(12, 0.0F));        // noise
+        keep_static_input(3, {1, 2, 16, 64}, std::vector<float>(2048, 0.0F));  // synth_noise
+    }
+};
+
+class RaveFunkDrumEncoder : public core::LatentEncoder {
+public:
+    RaveFunkDrumEncoder(anira::Context& context, const core::ModelSource& weights)
+        : core::LatentEncoder(
+              context,
+              core::load_model(k_rave_funk_drum_encoder_model_json, weights),
+              anira::ContractHandle::from_json(k_rave_funk_drum_encoder_contract_json),
+              k_model_rate,
+              k_hop,
+              k_latents) {}
+};
+
+class RaveFunkDrumDecoder : public core::LatentDecoder {
+public:
+    RaveFunkDrumDecoder(anira::Context& context, const core::ModelSource& weights)
+        : core::LatentDecoder(
+              context,
+              core::load_model(k_rave_funk_drum_decoder_model_json, weights),
+              anira::ContractHandle::from_json(k_rave_funk_drum_decoder_contract_json),
+              {.m_model_rate = k_model_rate,
+               .m_dims = k_latents,
+               .m_latents_per_sample = 1.0 / 2048.0,
+               .m_latent_slot = 0,
+               .m_audio_slot = 0}) {
         keep_static_input(2, {1, 12, 1}, std::vector<float>(12, 0.0F));        // noise
         keep_static_input(3, {1, 2, 16, 64}, std::vector<float>(2048, 0.0F));  // synth_noise
     }

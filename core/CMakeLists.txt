@@ -9,6 +9,8 @@ add_library(anira_models_core STATIC
     src/AsyncHandler.cpp
     src/AudioEffect.cpp
     src/AudioModel.cpp
+    src/LatentDecoder.cpp
+    src/LatentEncoder.cpp
     src/LogMel.cpp
     src/Model.cpp
     src/ModelSource.cpp
