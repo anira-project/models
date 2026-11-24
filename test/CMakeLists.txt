@@ -31,6 +31,7 @@ add_executable(anira-models-tests
     test_Descriptions.cpp
     test_Weights.cpp
     ${PROJECT_SOURCE_DIR}/core/test/test_AsyncHandler.cpp
+    ${PROJECT_SOURCE_DIR}/core/test/test_AudioEffect.cpp
     ${PROJECT_SOURCE_DIR}/core/test/test_Core.cpp
     ${PROJECT_SOURCE_DIR}/core/test/test_Embed.cpp
 )
@@ -74,6 +75,15 @@ endif()
 foreach(_model parakeet_tdt nemotron_diarization nemotron_asr_streaming)
     if(TARGET anira::models::${_model})
         target_link_libraries(anira-models-tests PRIVATE anira::models::${_model})
+    endif()
+endforeach()
+# The effects: one test file over every header-only effect wrapper that is built.
+target_sources(anira-models-tests PRIVATE test_Effects.cpp)
+foreach(_model guitar_lstm stateful_lstm steerable_nafx rave_djembe rave_funk_drum rave_magnetic_resonator_piano)
+    if(TARGET anira::models::${_model})
+        string(TOUPPER ${_model} _upper)
+        target_link_libraries(anira-models-tests PRIVATE anira::models::${_model})
+        target_compile_definitions(anira-models-tests PRIVATE ANIRA_MODELS_HAS_${_upper})
     endif()
 endforeach()
 gtest_discover_tests(anira-models-tests)

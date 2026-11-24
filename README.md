@@ -6,6 +6,12 @@ the [anira-project](https://huggingface.co/anira-project) organisation on Huggin
 
 **Status: scaffold.** The libraries (core, hand tracking, Silero VAD, Parakeet, Nemotron diarization, Nemotron ASR, Moonshine) follow. The dummy networks for tests are in `test-models/`.
 
+The effects (GuitarLSTM, the stateful LSTM, steerable-nafx and the three RAVE models) are one header
+each on `core::AudioEffect`: prepare, process in place, reset, get_latency, any channel count and
+host rate (resampled to the 44.1 kHz they were trained at), for example
+`anira::models::guitar_lstm::GuitarLstm` from `<anira/models/guitar_lstm/GuitarLstm.h>` with
+`ANIRA_MODELS_WITH_GUITAR_LSTM`.
+
 ## A model
 
 One folder per model under `models/`, JSON first:
