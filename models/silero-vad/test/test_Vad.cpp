@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Silero VAD's wrapper: the clock and the aligned output exact to the sample, the probabilities
-// those of ONNX Runtime on the same audio (test/vad_golden.json on Hugging Face), the same values at 48 kHz as at
-// 16 kHz, the offline run the same segments as streaming. The tests with the model need its
-// weights: ANIRA_MODELS_TEST_WEIGHTS/silero-vad (a checkout of the HF repository at the catalog's
-// revision, which also holds the golden); without them they skip. They run non-real-time (set_non_realtime), so every value is the model's and none a
-// miss.
+// those of ONNX Runtime on the same audio (test/vad_golden.json on Hugging Face), the same values
+// at 48 kHz as at 16 kHz, the offline run the same segments as streaming. The tests with the model
+// need its weights: ANIRA_MODELS_TEST_WEIGHTS/silero-vad (a checkout of the HF repository at the
+// catalog's revision, which also holds the golden); without them they skip. They run non-real-time
+// (set_non_realtime), so every value is the model's and none a miss.
 
 #include <anira/abi/enums.h>
 #include <anira/abi/status.h>
@@ -225,7 +225,8 @@ TEST(Vad, RunGivesTheSegmentsOfStreaming) {
     if (!weights) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/silero-vad is not set"; }
     anira::Context context{anira::ContextConfig{}};
     const std::vector<float> audio = models_test::vad_signal();
-    const std::vector<silero_vad::SpeechSpan> offline = silero_vad::Vad::run(context, *weights, audio, 16000.0);
+    const std::vector<silero_vad::SpeechSpan> offline =
+        silero_vad::Vad::run(context, *weights, audio, 16000.0);
 
     silero_vad::Vad vad(context, *weights);
     prepare(vad, 16000.0, 1024);

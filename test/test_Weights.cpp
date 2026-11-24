@@ -183,7 +183,8 @@ TEST(Weights, EveryDescriptionPreparesOnEveryEngineBuiltIn) {
             // Until anira's Async contract (M3): core::AsyncHandler, on every engine of this build.
             const std::map<std::string, std::string> repos = repo_of_weights(path.parent_path());
             for (const auto& model_entry : description.at("models")) {
-                const anira_engine engine = engine_named(model_entry.at("engine").get<std::string>());
+                const anira_engine engine =
+                    engine_named(model_entry.at("engine").get<std::string>());
                 if (!providers.contains(static_cast<uint32_t>(engine))) { continue; }
                 const auto weight = model_entry.at("path").get<std::string>();
                 const fs::path weights_dir = fs::path(root) / repos.at(weight);
@@ -192,8 +193,9 @@ TEST(Weights, EveryDescriptionPreparesOnEveryEngineBuiltIn) {
                     break;
                 }
                 try {
-                    core::AsyncHandler handler(
-                        context, text, core::ModelSource::directory(weights_dir));
+                    core::AsyncHandler handler(context,
+                                               text,
+                                               core::ModelSource::directory(weights_dir));
                     handler.prepare(anira::Async{});
                     ++prepared;
                 } catch (const std::exception& error) {

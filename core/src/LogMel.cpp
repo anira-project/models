@@ -28,7 +28,8 @@ double hz_to_mel(double hz) {
 double mel_to_hz(double mel) {
     const double min_log_mel = k_min_log_hz / k_f_sp;
     const double log_step = std::log(6.4) / 27.0;
-    return mel < min_log_mel ? mel * k_f_sp : k_min_log_hz * std::exp(log_step * (mel - min_log_mel));
+    return mel < min_log_mel ? mel * k_f_sp
+                             : k_min_log_hz * std::exp(log_step * (mel - min_log_mel));
 }
 
 // In place, radix 2.
@@ -96,7 +97,8 @@ LogMel::LogMel()
         const double norm = 2.0 / (high - low);
         for (std::size_t bin = 0; bin < k_bins; ++bin) {
             const double hz = static_cast<double>(bin) * k_sample_rate / static_cast<double>(k_fft);
-            const double weight = std::max(0.0, std::min((hz - low) / (mid - low), (high - hz) / (high - mid)));
+            const double weight =
+                std::max(0.0, std::min((hz - low) / (mid - low), (high - hz) / (high - mid)));
             m_melbank[(m * k_bins) + bin] = static_cast<float>(weight * norm);
         }
     }
@@ -134,7 +136,8 @@ std::size_t LogMel::process(std::span<const float> samples, std::span<float> fra
     }
     if (offset > 0) {
         std::copy(m_pending.begin() + static_cast<std::ptrdiff_t>(offset),
-                  m_pending.begin() + static_cast<std::ptrdiff_t>(m_pending_size), m_pending.begin());
+                  m_pending.begin() + static_cast<std::ptrdiff_t>(m_pending_size),
+                  m_pending.begin());
         m_pending_size -= offset;
     }
     return count;
@@ -146,7 +149,9 @@ void LogMel::frame(const float* samples, float* out) noexcept {
         m_im[i] = 0.0F;
     }
     fft(m_re, m_im);
-    for (std::size_t bin = 0; bin < k_bins; ++bin) { m_power[bin] = (m_re[bin] * m_re[bin]) + (m_im[bin] * m_im[bin]); }
+    for (std::size_t bin = 0; bin < k_bins; ++bin) {
+        m_power[bin] = (m_re[bin] * m_re[bin]) + (m_im[bin] * m_im[bin]);
+    }
     static const float k_guard = std::ldexp(1.0F, -24);
     for (std::size_t m = 0; m < k_mels; ++m) {
         const float* bank = m_melbank.data() + (m * k_bins);

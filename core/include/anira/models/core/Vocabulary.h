@@ -11,8 +11,8 @@
 
 namespace anira::models::core {
 
-/// SentencePiece vocabulary of a NeMo transducer (Parakeet, Nemotron ASR): token strings indexed by id, with the
-/// blank symbol as the last entry. Word starts are marked with "▁" (U+2581).
+/// SentencePiece vocabulary of a NeMo transducer (Parakeet, Nemotron ASR): token strings indexed by
+/// id, with the blank symbol as the last entry. Word starts are marked with "▁" (U+2581).
 class Vocabulary {
 public:
     /// `tokens[id]` is the token with that id; the last one is the blank.
@@ -22,12 +22,14 @@ public:
     /// Throws std::runtime_error if the file is missing, malformed or ids are not 0..n-1.
     [[nodiscard]] static Vocabulary load(const std::filesystem::path& path);
     /// The same from the file's text (`what` names it in errors).
-    [[nodiscard]] static Vocabulary parse(std::string_view text, const std::string& what = "vocab.txt");
+    [[nodiscard]] static Vocabulary parse(std::string_view text,
+                                          const std::string& what = "vocab.txt");
     /// Reads a one-token-per-line file, the id being the line number from 0 (the
     /// onnx-community Nemotron vocab.txt). Throws std::runtime_error if missing or empty.
     [[nodiscard]] static Vocabulary load_lines(const std::filesystem::path& path);
     /// The same from the file's text.
-    [[nodiscard]] static Vocabulary parse_lines(std::string_view text, const std::string& what = "vocab.txt");
+    [[nodiscard]] static Vocabulary parse_lines(std::string_view text,
+                                                const std::string& what = "vocab.txt");
 
     /// True for control tokens like "<unk>" or a language tag "<de-DE>", which are no text.
     [[nodiscard]] bool is_control(std::int32_t id) const;

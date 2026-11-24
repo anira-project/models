@@ -17,16 +17,17 @@
 namespace anira::models::moonshine_streaming {
 
 inline constexpr double k_sample_rate = 16000.0;
-inline constexpr std::size_t k_frame = 320;       ///< samples per encoder frame (50 Hz)
-inline constexpr std::size_t k_chunk = 25;        ///< encoder frames per step (0.5 s)
+inline constexpr std::size_t k_frame = 320;               ///< samples per encoder frame (50 Hz)
+inline constexpr std::size_t k_chunk = 25;                ///< encoder frames per step (0.5 s)
 inline constexpr std::size_t k_step = k_frame * k_chunk;  ///< samples per step: 8000
-inline constexpr std::size_t k_lookahead = 16;    ///< frames an encoder frame waits for
-inline constexpr std::size_t k_memory = 800;      ///< encoder frames per segment (16 s)
-inline constexpr std::size_t k_tokens = 128;      ///< decoder positions per segment
+inline constexpr std::size_t k_lookahead = 16;            ///< frames an encoder frame waits for
+inline constexpr std::size_t k_memory = 800;              ///< encoder frames per segment (16 s)
+inline constexpr std::size_t k_tokens = 128;              ///< decoder positions per segment
 inline constexpr double k_tokens_per_second = 6.5;
 inline constexpr std::int32_t k_bos = 1;
 inline constexpr std::int32_t k_eos = 2;
-/// The longest segment: 15 s plus the voice activity detector's look-behind of 0.512 s, whole steps.
+/// The longest segment: 15 s plus the voice activity detector's look-behind of 0.512 s, whole
+/// steps.
 inline constexpr std::size_t k_max_steps = 31;
 
 /// One of the four models of anira-project/moonshine-streaming.

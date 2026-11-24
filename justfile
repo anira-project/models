@@ -18,13 +18,13 @@ build:
 test: build
     ctest --preset {{preset}}
 
-# clang-format in place
+# clang-format in place (the tracked sources only, never a .venv)
 format:
-    find . -path ./build -prune -o -path ./.cache -prune -o \( -name '*.cpp' -o -name '*.h' \) -print | xargs clang-format -i
+    git ls-files '*.cpp' '*.h' | xargs clang-format -i
 
 # clang-format check
 format-check:
-    find . -path ./build -prune -o -path ./.cache -prune -o \( -name '*.cpp' -o -name '*.h' \) -print | xargs clang-format --dry-run --Werror
+    git ls-files '*.cpp' '*.h' | xargs clang-format --dry-run --Werror
 
 # Every format of every description over consecutive calls, and every engine and backend present
 check-streaming WEIGHTS:

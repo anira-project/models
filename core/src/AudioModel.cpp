@@ -65,8 +65,8 @@ anira::PlanReport AudioModel::prepare_stream(double sample_rate,
     // Each push carries at least one model sample (an empty one is skipped).
     const double model_min = std::max(1.0, std::floor(static_cast<double>(min_block) / step));
     m_contract.hard_host_blocks(model_min,
-                             static_cast<double>(m_resampler.max_output(max_block)),
-                             m_stream.m_model_rate);
+                                static_cast<double>(m_resampler.max_output(max_block)),
+                                m_stream.m_model_rate);
     return prepare_contract(m_contract, sample_rate, max_block);
 }
 
