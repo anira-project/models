@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // The effect wrappers (core::AudioEffect, header-only per model) on their weights: each prepares
-// at 48 kHz (the host's rate, as anira's examples run them), runs a plucked-string test signal and
+// at 48 kHz (resampled to the 44.1 kHz it was trained at), runs a plucked-string test signal and
 // gives a finite, audible result after its latency; a reset() and the same signal give the same
 // result again (a stateful model starts from zero state). Each needs
 // ANIRA_MODELS_TEST_WEIGHTS/<its HF repository> with its ONNX files; without them it skips.
@@ -109,14 +109,17 @@ void check_latents(const fs::path& dir, std::size_t hop, std::uint32_t dims) {
     encoder.prepare(k_rate, 512);
     const std::vector<float> input = plucks();
     const std::vector<core::Latents> frames = encoder.run(input);
+    const double frame_host = static_cast<double>(hop) * k_rate / 44100.0;  // resampled
     EXPECT_NEAR(static_cast<double>(frames.size()),
-                static_cast<double>(input.size()) / static_cast<double>(hop),
-                1.0);
+                static_cast<double>(input.size()) / frame_host,
+                1.5);
     ASSERT_FALSE(frames.empty());
     float spread = 0.0F;
     for (std::size_t i = 0; i < frames.size(); ++i) {
         ASSERT_EQ(frames[i].m_count, dims);
-        EXPECT_EQ(frames[i].m_position, static_cast<std::int64_t>(i * hop));
+        EXPECT_NEAR(static_cast<double>(frames[i].m_position),
+                    static_cast<double>(i) * frame_host,
+                    1.0);
         for (std::uint32_t c = 0; c < dims; ++c) {
             ASSERT_TRUE(std::isfinite(frames[i].m_values[c]));
             spread = std::max(spread, std::abs(frames[i].m_values[c] - frames[0].m_values[c]));

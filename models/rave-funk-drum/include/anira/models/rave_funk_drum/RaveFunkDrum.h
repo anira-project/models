@@ -16,9 +16,9 @@
 
 /// RAVE funk drum, a RAVE model (weights CC BY-NC 4.0): 4 latents, one frame per 2048 samples,
 /// which the decoder takes as a stream (anira's RAVE example). Three graphs, each anira's
-/// InferenceHandler with the model built in, at the host's rate as anira's RAVE example runs
-/// them; every graph carries its state through anira (reset() clears it), the noise inputs are
-/// zeros (the deterministic decode).
+/// InferenceHandler with the model built in, trained at 44.1 kHz (the host's audio is
+/// resampled); every graph carries its state through anira (reset() clears it), the noise inputs
+/// are zeros (the deterministic decode).
 ///
 ///   - RaveFunkDrum: the forward pass (encoder and decoder in one graph), a timbre transfer of the
 ///   input:
@@ -27,6 +27,9 @@
 ///   - RaveFunkDrumDecoder: push_data (latent frames), pop_data (audio) (core::LatentDecoder): the
 ///     encoder's frames, changed or not, as in anira's example, or a hand tracker's.
 namespace anira::models::rave_funk_drum {
+
+/// The rate the model was trained at; the host's audio is resampled to it.
+inline constexpr double k_model_rate = 44100.0;
 
 inline constexpr std::uint32_t k_latents = 4;
 inline constexpr std::size_t k_hop = 2048;  ///< samples per latent frame
@@ -38,7 +41,8 @@ public:
         : core::AudioEffect(
               context,
               core::load_model(k_rave_funk_drum_forward_model_json, weights),
-              anira::ContractHandle::from_json(k_rave_funk_drum_forward_contract_json)) {
+              anira::ContractHandle::from_json(k_rave_funk_drum_forward_contract_json),
+              k_model_rate) {
         keep_static_input(2, {1, 12, 1}, std::vector<float>(12, 0.0F));        // noise
         keep_static_input(3, {1, 2, 16, 64}, std::vector<float>(2048, 0.0F));  // synth_noise
     }
@@ -51,6 +55,7 @@ public:
               context,
               core::load_model(k_rave_funk_drum_encoder_model_json, weights),
               anira::ContractHandle::from_json(k_rave_funk_drum_encoder_contract_json),
+              k_model_rate,
               k_hop,
               k_latents) {}
 };
@@ -62,7 +67,8 @@ public:
               context,
               core::load_model(k_rave_funk_drum_decoder_model_json, weights),
               anira::ContractHandle::from_json(k_rave_funk_drum_decoder_contract_json),
-              {.m_dims = k_latents,
+              {.m_model_rate = k_model_rate,
+               .m_dims = k_latents,
                .m_hop = k_hop,
                .m_static_latents = false,
                .m_latent_slot = 0,

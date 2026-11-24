@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// core::AudioEffect on the gain model (test-models/simple-gain, mono, ONNX Runtime), as anira's
-// handler with the model built in: the output is the input times the gain exactly get_latency()
-// (anira's) later, in any blocks; every channel carries the downmix's result; run() gives the
-// output without the latency.
+// core::AudioEffect on the gain model (test-models/simple-gain, mono, ONNX Runtime) run at a model
+// rate of 44.1 kHz, as anira's handler with the model built in: at that rate the output is the
+// input times the gain exactly get_latency() (anira's) later, in any blocks; at 48 kHz, through
+// both resamplers, a band-limited signal comes out the same way within the filters' ripple; every
+// channel carries the downmix's result; run() gives the output without the latency.
 
 #include <GainDescriptions.h>
 #include <anira/anira.h>
@@ -27,6 +28,7 @@ namespace core = anira::models::core;
 namespace {
 
 constexpr float k_gain = 0.5F;
+constexpr double k_model_rate = 44100.0;  // the gain model runs at 44.1 kHz here
 
 class GainEffect : public core::AudioEffect {
 public:
@@ -34,7 +36,8 @@ public:
         : core::AudioEffect(context,
                             core::load_model(models_test::k_gain_model_json,
                                              core::ModelSource::directory(MODELS_TEST_GAIN_DIR)),
-                            anira::ContractHandle::from_json(models_test::k_gain_contract_json)) {
+                            anira::ContractHandle::from_json(models_test::k_gain_contract_json),
+                            k_model_rate) {
         keep_static_input(1, {1}, {k_gain});
     }
 };
@@ -57,10 +60,10 @@ anira::Tensor mono(std::span<float> samples) {
 
 }  // namespace
 
-TEST(AudioEffect, TheOutputIsTheInputThroughTheModelAniraLatencyLater) {
+TEST(AudioEffect, AtTheModelsRateTheOutputIsTheInputThroughTheModelAniraLatencyLater) {
     anira::Context context{anira::ContextConfig{}};
     GainEffect effect(context);
-    effect.prepare(48000.0, 512);
+    effect.prepare(44100.0, 512);  // the model's rate: the resamplers are pass-through
     std::vector<float> audio(8192, 0.0F);
     audio[100] = 1.0F;
     audio[101] = 0.25F;
@@ -79,6 +82,28 @@ TEST(AudioEffect, TheOutputIsTheInputThroughTheModelAniraLatencyLater) {
             i == latency + 100 ? k_gain : (i == latency + 101 ? k_gain * 0.25F : 0.0F);
         ASSERT_FLOAT_EQ(audio[i], expected) << "sample " << i << ", latency " << latency;
     }
+}
+
+TEST(AudioEffect, At48kTheOutputIsTheInputThroughTheModelLatencyLater) {
+    anira::Context context{anira::ContextConfig{}};
+    GainEffect effect(context);
+    effect.prepare(48000.0, 480);
+    const std::vector<float> input = sine(48000, 440.0, 48000.0);
+    std::vector<float> audio = input;
+    const std::array<std::size_t, 4> sizes{480, 1, 333, 64};
+    std::size_t k = 0;
+    for (std::size_t start = 0; start < audio.size(); ++k) {
+        const std::size_t count = std::min(sizes[k % sizes.size()], audio.size() - start);
+        const anira::Tensor block = mono(std::span<float>(audio).subspan(start, count));
+        ASSERT_EQ(effect.process_wait(block, block, ANIRA_WAIT_FOREVER), ANIRA_OK);
+        start += count;
+    }
+    const std::size_t latency = effect.get_latency();
+    float worst = 0.0F;
+    for (std::size_t i = latency + 4800; i < audio.size(); ++i) {
+        worst = std::max(worst, std::abs(audio[i] - (k_gain * input[i - latency])));
+    }
+    EXPECT_LT(worst, 2e-3F) << "latency " << latency;
 }
 
 TEST(AudioEffect, EveryChannelCarriesTheDownmixsResult) {

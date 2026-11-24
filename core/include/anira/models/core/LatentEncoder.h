@@ -4,6 +4,7 @@
 
 #include <anira/anira.h>
 #include <anira/models/core/Latents.h>
+#include <tanh/dsp-basics/Resampler.h>
 
 #include <anira/anira.hpp>
 #include <array>
@@ -14,10 +15,11 @@
 
 namespace anira::models::core {
 
-/// The encoder of an audio autoencoder (RAVE) as anira's InferenceHandler with the model built in,
-/// at the host's rate as anira's RAVE example runs it: push_data (the host's audio, downmixed),
-/// pop_data (one latent frame per hop() samples pushed: frames_due() of them), their _wait twins,
-/// reset, get_latency, plan_report, set_plan, rt_error.
+/// The encoder of an audio autoencoder (RAVE) as anira's InferenceHandler with the model built in:
+/// push_data (the host's audio: downmixed and resampled to the rate the model was trained at),
+/// pop_data (one latent frame per hop() model samples pushed: frames_due() of them, each with the
+/// host sample its audio starts at), their _wait twins, reset, get_latency, plan_report, set_plan,
+/// rt_error.
 class LatentEncoder {
 public:
     LatentEncoder(const LatentEncoder&) = delete;
@@ -53,8 +55,9 @@ public:
 
     /// anira's latency in frames.
     [[nodiscard]] std::size_t get_latency() const noexcept { return m_handler.get_latency(0); }
-    /// Host samples per frame.
+    /// Model samples per frame.
     [[nodiscard]] std::size_t hop() const noexcept { return m_hop; }
+    [[nodiscard]] double model_rate() const noexcept { return m_model_rate; }
     [[nodiscard]] std::uint32_t dims() const noexcept { return m_dims; }
     [[nodiscard]] double sample_rate() const noexcept { return m_host_rate; }
     [[nodiscard]] anira::PlanReport plan_report() const noexcept { return m_handler.plan_report(); }
@@ -62,11 +65,12 @@ public:
     [[nodiscard]] anira_status rt_error() const noexcept { return m_handler.rt_error(); }
 
 protected:
-    /// `model`'s streamed input 0 carries the audio, its streamed output 0 the latents: `dims`
-    /// channels, one frame per `hop` samples.
+    /// `model`'s streamed input 0 carries the audio at `model_rate`, its streamed output 0 the
+    /// latents: `dims` channels, one frame per `hop` model samples.
     LatentEncoder(anira::Context& context,
                   anira::ModelConfig model,
                   anira::ContractHandle contract,
+                  double model_rate,
                   std::size_t hop,
                   std::uint32_t dims);
     ~LatentEncoder() = default;
@@ -80,14 +84,17 @@ private:
     anira::ModelConfig m_model;  // outlives the handler: borrowed weights
     anira::ContractHandle m_contract;
     anira::InferenceHandler m_handler;
+    double m_model_rate;
     std::size_t m_hop;
     std::uint32_t m_dims;
 
     double m_host_rate = 0.0;
     std::size_t m_max_block = 0;
+    thl::dsp_basics::Resampler m_down;
     std::vector<float> m_mono;
+    std::vector<float> m_model_audio;
     std::array<float*, 1> m_plane{};
-    std::int64_t m_pushed = 0;  // samples since reset()
+    std::int64_t m_pushed = 0;  // model samples since reset()
     std::int64_t m_popped = 0;  // frames since reset(), anira's priming included
 };
 

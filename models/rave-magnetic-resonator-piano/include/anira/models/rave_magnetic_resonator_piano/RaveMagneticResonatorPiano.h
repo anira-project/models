@@ -16,19 +16,21 @@
 
 /// RAVE magnetic resonator piano, a RAVE model (weights CC BY-NC 4.0): 8 latents, one frame per
 /// 2048 samples, which the decoder takes as a Static input (the last frame pushed). Three graphs,
-/// each anira's InferenceHandler with the model built in, at the host's rate as anira's RAVE
-/// example runs them; every graph carries its state through anira (reset() clears it), the noise
+/// each anira's InferenceHandler with the model built in, trained at 44.1 kHz (the host's audio is
+/// resampled); every graph carries its state through anira (reset() clears it), the noise
 /// inputs are zeros (the deterministic decode).
 ///
-///   - RaveMagneticResonatorPiano: the forward pass (encoder and decoder in one graph), a timbre
-///   transfer of the input:
-///     process, process_wait (core::AudioEffect).
+///   - RaveMagneticResonatorPiano: the forward pass (encoder and decoder in one graph), a
+///     timbre transfer of the input: process, process_wait (core::AudioEffect).
 ///   - RaveMagneticResonatorPianoEncoder: push_data (audio), pop_data (latent frames)
 ///   (core::LatentEncoder).
 ///   - RaveMagneticResonatorPianoDecoder: push_data (latent frames), pop_data (audio)
 ///   (core::LatentDecoder): the
 ///     encoder's frames, changed or not, as in anira's example, or a hand tracker's.
 namespace anira::models::rave_magnetic_resonator_piano {
+
+/// The rate the model was trained at; the host's audio is resampled to it.
+inline constexpr double k_model_rate = 44100.0;
 
 inline constexpr std::uint32_t k_latents = 8;
 inline constexpr std::size_t k_hop = 2048;  ///< samples per latent frame
@@ -41,7 +43,8 @@ public:
               context,
               core::load_model(k_rave_magnetic_resonator_piano_forward_model_json, weights),
               anira::ContractHandle::from_json(
-                  k_rave_magnetic_resonator_piano_forward_contract_json)) {
+                  k_rave_magnetic_resonator_piano_forward_contract_json),
+              k_model_rate) {
         keep_static_input(2, {1, 120, 1}, std::vector<float>(120, 0.0F));  // noise
     }
 };
@@ -54,6 +57,7 @@ public:
               core::load_model(k_rave_magnetic_resonator_piano_encoder_model_json, weights),
               anira::ContractHandle::from_json(
                   k_rave_magnetic_resonator_piano_encoder_contract_json),
+              k_model_rate,
               k_hop,
               k_latents) {}
 };
@@ -66,7 +70,8 @@ public:
               core::load_model(k_rave_magnetic_resonator_piano_decoder_model_json, weights),
               anira::ContractHandle::from_json(
                   k_rave_magnetic_resonator_piano_decoder_contract_json),
-              {.m_dims = k_latents,
+              {.m_model_rate = k_model_rate,
+               .m_dims = k_latents,
                .m_hop = k_hop,
                .m_static_latents = true,
                .m_latent_slot = 0,

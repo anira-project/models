@@ -7,8 +7,8 @@ the [anira-project](https://huggingface.co/anira-project) organisation on Huggin
 **Status: scaffold.** The libraries (core, hand tracking, Silero VAD, Parakeet, Nemotron diarization, Nemotron ASR, Moonshine) follow. The dummy networks for tests are in `test-models/`.
 
 The effects (GuitarLSTM, the stateful LSTM, steerable-nafx and the three RAVE models) are one header
-each, anira's handler with the model built in, run as anira's examples run them (at the host's
-rate): `prepare`, `process` / `process_wait`, `reset`, `get_latency`, `plan_report`, `set_plan`, for
+each, anira's handler with the model built in, at the 44.1 kHz they were trained at (the host's
+audio is resampled inside): `prepare`, `process` / `process_wait`, `reset`, `get_latency`, `plan_report`, `set_plan`, for
 example `anira::models::guitar_lstm::GuitarLstm` from `<anira/models/guitar_lstm/GuitarLstm.h>` with
 `ANIRA_MODELS_WITH_GUITAR_LSTM`. A RAVE header also has the model split as in anira's RAVE
 example: `<Name>Encoder` (`push_data` audio, `pop_data` latent frames) and `<Name>Decoder`

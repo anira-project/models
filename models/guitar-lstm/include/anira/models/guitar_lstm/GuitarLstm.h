@@ -13,10 +13,14 @@
 
 namespace anira::models::guitar_lstm {
 
+/// The rate the model was trained at; the host's audio is resampled to it.
+inline constexpr double k_model_rate = 44100.0;
+
 /// GuitarLSTM (faressc/GuitarLSTM): a guitar amp, a convolution over 150 samples into an LSTM,
 /// 256 samples per inference, its windows built by GuitarLstmProcessor as in anira's example.
 /// anira's InferenceHandler with the model built in (core::AudioEffect): prepare, process,
-/// process_wait, reset, get_latency; at the host's rate, mono (the downmix in, every channel out).
+/// process_wait, reset, get_latency; trained at 44.1 kHz (the host's audio is resampled), mono (the
+/// downmix in, every channel out).
 class GuitarLstm : public core::AudioEffect {
 public:
     /// The weights: the model's Hugging Face repository (a directory or embedded bytes).
@@ -24,6 +28,7 @@ public:
         : core::AudioEffect(context,
                             core::load_model(k_guitar_lstm_model_json, weights),
                             anira::ContractHandle::from_json(k_guitar_lstm_contract_json),
+                            k_model_rate,
                             std::make_shared<GuitarLstmProcessor>()) {}
 };
 

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -20,11 +21,13 @@ namespace anira::models::core {
 LatentEncoder::LatentEncoder(anira::Context& context,
                              anira::ModelConfig model,
                              anira::ContractHandle contract,
+                             double model_rate,
                              std::size_t hop,
                              std::uint32_t dims)
     : m_model(std::move(model))
     , m_contract(std::move(contract))
     , m_handler(context, anira::Pipeline().add_inference(m_model))
+    , m_model_rate(model_rate)
     , m_hop(hop)
     , m_dims(dims) {
     if (dims == 0 || dims > k_max_latents || hop == 0) {
@@ -35,20 +38,24 @@ LatentEncoder::LatentEncoder(anira::Context& context,
 anira::PlanReport LatentEncoder::prepare(double sample_rate,
                                          std::size_t max_block,
                                          std::size_t min_block) {
-    m_contract.hard_host_blocks(static_cast<double>(std::max<std::size_t>(min_block, 1)),
-                                static_cast<double>(max_block),
-                                sample_rate);
+    const double step = sample_rate / m_model_rate;
+    m_down.prepare(sample_rate, m_model_rate, max_block);
+    const std::size_t model_max = m_down.max_output(max_block);
+    const double model_min = std::max(1.0, std::floor(static_cast<double>(min_block) / step));
+    m_contract.hard_host_blocks(model_min, static_cast<double>(model_max), m_model_rate);
     anira::PlanReport report = m_handler.prepare(m_contract);
     m_host_rate = sample_rate;
     m_max_block = max_block;
     m_mono.assign(max_block, 0.0F);
-    m_plane = {m_mono.data()};
+    m_model_audio.assign(model_max, 0.0F);
+    m_plane = {m_model_audio.data()};
     reset();
     return report;
 }
 
 void LatentEncoder::reset() {
     m_handler.reset();
+    m_down.reset();
     m_pushed = 0;
     m_popped = 0;
 }
@@ -56,11 +63,14 @@ void LatentEncoder::reset() {
 anira_status LatentEncoder::push_data(const anira::Tensor& audio) noexcept {
     const std::size_t n = samples(audio);
     if (n > m_max_block || !downmix(audio, m_mono)) { return ANIRA_ERROR_INVALID_ARGUMENT; }
-    const anira::Tensor mono =
-        anira::Tensor::from_host_planar<float>(std::span<float* const>(m_plane),
-                                               std::array<int64_t, 2>{1, static_cast<int64_t>(n)});
-    const anira_status status = m_handler.push_data(mono, 0);
-    if (!ANIRA_FAILED(status)) { m_pushed += static_cast<std::int64_t>(n); }
+    const std::size_t model_samples =
+        m_down.process(std::span<const float>(m_mono.data(), n), m_model_audio);
+    if (model_samples == 0) { return ANIRA_OK; }
+    const anira::Tensor model = anira::Tensor::from_host_planar<float>(
+        std::span<float* const>(m_plane),
+        std::array<int64_t, 2>{1, static_cast<int64_t>(model_samples)});
+    const anira_status status = m_handler.push_data(model, 0);
+    if (!ANIRA_FAILED(status)) { m_pushed += static_cast<std::int64_t>(model_samples); }
     return status;
 }
 
@@ -96,8 +106,10 @@ template <bool Wait>
 anira_status LatentEncoder::pop_frame(Latents& latents, double timeout_ms) noexcept {
     latents = {};
     latents.m_count = m_dims;
-    latents.m_position =
+    const std::int64_t model_sample =
         (m_popped - static_cast<std::int64_t>(get_latency())) * static_cast<std::int64_t>(m_hop);
+    latents.m_position =
+        std::llround(static_cast<double>(model_sample) * m_host_rate / m_model_rate);
     const anira::Tensor tensor = anira::Tensor::from_host(latents.m_values.data(),
                                                           ANIRA_DTYPE_F32,
                                                           std::array<std::int64_t, 2>{m_dims, 1});
@@ -118,7 +130,9 @@ std::vector<Latents> LatentEncoder::run(std::span<const float> mono) {
     std::vector<Latents> frames;
     // The recording, then anira's latency in silence: every frame of the recording comes out.
     std::vector<float> audio(mono.begin(), mono.end());
-    audio.resize(mono.size() + ((get_latency() + 1) * m_hop), 0.0F);
+    const auto tail = static_cast<std::size_t>(
+        std::ceil(static_cast<double>((get_latency() + 2) * m_hop) * m_host_rate / m_model_rate));
+    audio.resize(mono.size() + tail, 0.0F);
     for (std::size_t start = 0; start < audio.size(); start += m_max_block) {
         const std::size_t count = std::min(m_max_block, audio.size() - start);
         push_data(std::span<const float>(audio).subspan(start, count));

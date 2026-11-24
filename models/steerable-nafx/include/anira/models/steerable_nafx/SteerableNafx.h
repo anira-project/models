@@ -13,11 +13,14 @@
 
 namespace anira::models::steerable_nafx {
 
+/// The rate the model was trained at; the host's audio is resampled to it.
+inline constexpr double k_model_rate = 44100.0;
+
 /// Steerable NAFX (faressc/steerable-nafx, "Steerable discovery of neural audio effects"): a
 /// randomly initialised dilated convolutional network as an effect, 2048 samples per inference, in
 /// three sizes. anira's InferenceHandler with the model built in (core::AudioEffect): prepare,
-/// process, process_wait, reset, get_latency; at the host's rate, mono (the downmix in, every
-/// channel out).
+/// process, process_wait, reset, get_latency; trained at 44.1 kHz (the host's audio is resampled),
+/// mono (the downmix in, every channel out).
 class SteerableNafx : public core::AudioEffect {
 public:
     /// The model's size: its receptive field (the full model's 13332 samples, or 2 or 3 of its
@@ -29,7 +32,7 @@ public:
         : core::AudioEffect(context,
                             core::load_model(model_json(size), weights),
                             anira::ContractHandle::from_json(contract_json(size)),
-                            nullptr) {}
+                            k_model_rate) {}
 
 private:
     static std::string_view model_json(Size size) noexcept {
