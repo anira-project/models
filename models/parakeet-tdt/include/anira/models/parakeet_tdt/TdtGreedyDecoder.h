@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <anira/models/core/Words.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -9,14 +11,7 @@
 
 namespace anira::models::parakeet_tdt {
 
-/// A token emitted by the decoder and the encoder frame it was emitted at
-/// (Parakeet: 80 ms per frame).
-struct Token {
-    std::int32_t m_id;
-    std::size_t m_frame;
-
-    friend bool operator==(const Token&, const Token&) = default;
-};
+using core::Token;
 
 /// The prediction network + joint of a TDT transducer, evaluated one step at a time.
 /// Implemented over ONNX Runtime for Parakeet and by scripted fakes in the tests.

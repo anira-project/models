@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # anira::models::parakeet_tdt: Parakeet TDT 0.6B v3. TdtGreedyDecoder decodes the joint network's
-# tokens and durations, Vocabulary turns tokens into text, Words gives the words with their positions.
+# tokens and durations (core::Vocabulary and core::words_from_tokens turn them into text and words).
 # Parakeet runs a segment through the preprocessor, the encoder (in the smallest of four windows that
 # holds it) and the TDT search (core::AsyncHandler). The weights are on Hugging Face
 # (parakeet-tdt-0.6b-v3.catalog.json).
@@ -9,8 +9,6 @@
 add_library(anira_models_parakeet_tdt STATIC
     src/Parakeet.cpp
     src/TdtGreedyDecoder.cpp
-    src/Vocabulary.cpp
-    src/Words.cpp
 )
 add_library(anira::models::parakeet_tdt ALIAS anira_models_parakeet_tdt)
 

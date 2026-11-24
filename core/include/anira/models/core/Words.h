@@ -3,18 +3,25 @@
 #pragma once
 
 #include <anira/models/core/Segment.h>
-#include <anira/models/parakeet_tdt/TdtGreedyDecoder.h>
-#include <anira/models/parakeet_tdt/Vocabulary.h>
+#include <anira/models/core/Vocabulary.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <vector>
 
-namespace anira::models::parakeet_tdt {
+namespace anira::models::core {
 
-using core::Word;
+/// A token a transducer emitted and the encoder frame it was emitted at.
+struct Token {
+    std::int32_t m_id;
+    std::size_t m_frame;
 
-/// 16 kHz samples per Parakeet encoder frame: 10 ms feature hop x subsampling factor 8.
+    friend bool operator==(const Token&, const Token&) = default;
+};
+
+/// 16 kHz samples per encoder frame of the NeMo FastConformers (Parakeet, Nemotron ASR): 10 ms
+/// feature hop x subsampling factor 8.
 inline constexpr std::int64_t k_samples_per_frame = 1280;
 
 /// The words of a transcribed segment. The words are the decoded text
@@ -30,4 +37,4 @@ inline constexpr std::int64_t k_samples_per_frame = 1280;
                                                   std::int64_t segment_start,
                                                   std::int64_t segment_end);
 
-}  // namespace anira::models::parakeet_tdt
+}  // namespace anira::models::core

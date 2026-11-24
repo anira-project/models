@@ -12,6 +12,8 @@ add_library(anira_models_core STATIC
     src/Model.cpp
     src/ModelSource.cpp
     src/OnnxEngine.cpp
+    src/Vocabulary.cpp
+    src/Words.cpp
 )
 add_library(anira::models::core ALIAS anira_models_core)
 

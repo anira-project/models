@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <anira/models/core/Segment.h>
-#include <anira/models/parakeet_tdt/TdtGreedyDecoder.h>
-#include <anira/models/parakeet_tdt/Vocabulary.h>
-#include <anira/models/parakeet_tdt/Words.h>
+#include <anira/models/core/Vocabulary.h>
+#include <anira/models/core/Words.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -12,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace anira::models::parakeet_tdt {
+namespace anira::models::core {
 
 std::vector<Word> words_from_tokens(std::span<const Token> tokens,
                                     const Vocabulary& vocabulary,
@@ -66,4 +65,4 @@ std::vector<Word> words_from_tokens(std::span<const Token> tokens,
     return words;
 }
 
-}  // namespace anira::models::parakeet_tdt
+}  // namespace anira::models::core

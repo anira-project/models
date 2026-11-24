@@ -4,7 +4,7 @@ Ready-to-use model libraries on [anira](https://github.com/anira-project/anira):
 or speech to text to an application with one CMake option and one target. The weights come from
 the [anira-project](https://huggingface.co/anira-project) organisation on Hugging Face.
 
-**Status: scaffold.** The libraries (core, hand tracking, Silero VAD, Parakeet, Nemotron diarization, Moonshine) follow. The dummy networks for tests are in `test-models/`.
+**Status: scaffold.** The libraries (core, hand tracking, Silero VAD, Parakeet, Nemotron diarization, Nemotron ASR, Moonshine) follow. The dummy networks for tests are in `test-models/`.
 
 ## A model
 

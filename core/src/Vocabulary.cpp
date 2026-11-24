@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#include <anira/models/parakeet_tdt/Vocabulary.h>
+#include <anira/models/core/Vocabulary.h>
 
 #include <charconv>
 #include <cstddef>
@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace anira::models::parakeet_tdt {
+namespace anira::models::core {
 
 namespace {
 
@@ -120,12 +120,18 @@ Vocabulary Vocabulary::parse(std::string_view text, const std::string& what) {
 Vocabulary Vocabulary::load_lines(const std::filesystem::path& path) {
     std::ifstream file(path);
     if (!file) { throw std::runtime_error("Vocabulary: cannot open " + path.string()); }
+    const std::string text{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    return parse_lines(text, path.string());
+}
+
+Vocabulary Vocabulary::parse_lines(std::string_view text, const std::string& what) {
     std::vector<std::string> tokens;
-    for (std::string line; std::getline(file, line);) {
+    std::istringstream lines{std::string(text)};
+    for (std::string line; std::getline(lines, line);) {
         if (!line.empty() && line.back() == '\r') { line.pop_back(); }
         tokens.push_back(std::move(line));
     }
-    if (tokens.empty()) { throw std::runtime_error("Vocabulary: " + path.string() + " is empty"); }
+    if (tokens.empty()) { throw std::runtime_error("Vocabulary: " + what + " is empty"); }
     return Vocabulary(std::move(tokens));
 }
 
@@ -165,4 +171,4 @@ std::string Vocabulary::decode(std::span<const std::int32_t> ids) const {
     return text;
 }
 
-}  // namespace anira::models::parakeet_tdt
+}  // namespace anira::models::core

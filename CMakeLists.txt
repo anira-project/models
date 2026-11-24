@@ -23,6 +23,7 @@ option(ANIRA_MODELS_WITH_SILERO_VAD "Build anira::models::silero_vad" ${PROJECT_
 option(ANIRA_MODELS_WITH_MOONSHINE_STREAMING "Build anira::models::moonshine_streaming" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_WITH_PARAKEET_TDT "Build anira::models::parakeet_tdt" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_WITH_NEMOTRON_DIARIZATION "Build anira::models::nemotron_diarization" ${PROJECT_IS_TOP_LEVEL})
+option(ANIRA_MODELS_WITH_NEMOTRON_ASR_STREAMING "Build anira::models::nemotron_asr_streaming" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_WITH_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_LINK_COMPILE_COMMANDS
        "Link build/compile_commands.json, which clangd reads, to this tree's (top-level builds only)" OFF)
@@ -66,6 +67,9 @@ if(ANIRA_MODELS_WITH_PARAKEET_TDT)
 endif()
 if(ANIRA_MODELS_WITH_NEMOTRON_DIARIZATION)
     add_subdirectory(models/nemotron-diarization)
+endif()
+if(ANIRA_MODELS_WITH_NEMOTRON_ASR_STREAMING)
+    add_subdirectory(models/nemotron-asr-streaming)
 endif()
 
 anira_models_check_licenses()

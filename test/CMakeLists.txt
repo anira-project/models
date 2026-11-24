@@ -67,7 +67,11 @@ if(TARGET anira::models::nemotron_diarization)
     target_sources(anira-models-tests PRIVATE
         ${PROJECT_SOURCE_DIR}/models/nemotron-diarization/test/test_Diarizer.cpp)
 endif()
-foreach(_model parakeet_tdt nemotron_diarization)
+if(TARGET anira::models::nemotron_asr_streaming)
+    target_sources(anira-models-tests PRIVATE
+        ${PROJECT_SOURCE_DIR}/models/nemotron-asr-streaming/test/test_NemotronAsr.cpp)
+endif()
+foreach(_model parakeet_tdt nemotron_diarization nemotron_asr_streaming)
     if(TARGET anira::models::${_model})
         target_link_libraries(anira-models-tests PRIVATE anira::models::${_model})
     endif()

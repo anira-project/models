@@ -5,7 +5,7 @@
 #include <anira/models/core/AsyncHandler.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/core/Segment.h>
-#include <anira/models/parakeet_tdt/Vocabulary.h>
+#include <anira/models/core/Vocabulary.h>
 
 #include <anira/anira.hpp>
 #include <array>
@@ -16,6 +16,8 @@
 #include <vector>
 
 namespace anira::models::parakeet_tdt {
+
+using core::Vocabulary;
 
 inline constexpr double k_sample_rate = 16000.0;
 

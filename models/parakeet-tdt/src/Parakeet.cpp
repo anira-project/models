@@ -7,8 +7,8 @@
 #include <anira/models/parakeet_tdt/Descriptions.h>
 #include <anira/models/parakeet_tdt/Parakeet.h>
 #include <anira/models/parakeet_tdt/TdtGreedyDecoder.h>
-#include <anira/models/parakeet_tdt/Vocabulary.h>
-#include <anira/models/parakeet_tdt/Words.h>
+#include <anira/models/core/Vocabulary.h>
+#include <anira/models/core/Words.h>
 #include <tanh/dsp-basics/Resampler.h>
 
 #include <algorithm>
@@ -186,7 +186,7 @@ core::Segment Parakeet::transcribe(std::span<const float> audio, std::int64_t st
     segment.m_end_sample = start_sample + static_cast<std::int64_t>(audio.size());
     segment.m_text = m_vocabulary.decode(ids);
     if (!segment.m_text.empty() && segment.m_text.front() == ' ') { segment.m_text.erase(0, 1); }
-    segment.m_words = words_from_tokens(tokens, m_vocabulary, start_sample, segment.m_end_sample);
+    segment.m_words = core::words_from_tokens(tokens, m_vocabulary, start_sample, segment.m_end_sample);
     segment.m_is_final = true;
     return segment;
 }
