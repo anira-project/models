@@ -84,8 +84,13 @@ private:
 class AsyncHandler {
 public:
     /// The model's description (the text of a `*.model.json` written for Async) and its weights.
+    /// Its CPU ONNX Runtime entries run on OnnxEngine with `threads` intra-op threads (0: one per
+    /// physical core); a job is not real-time, so it may take more than anira's one thread.
     /// Throws Error for a description anira refuses or a Buffer tensor without an axis of 1.
-    AsyncHandler(anira::Context& context, std::string_view model_json, const ModelSource& weights);
+    AsyncHandler(anira::Context& context,
+                 std::string_view model_json,
+                 const ModelSource& weights,
+                 std::uint32_t threads = 0);
     ~AsyncHandler();
     AsyncHandler(const AsyncHandler&) = delete;
     AsyncHandler& operator=(const AsyncHandler&) = delete;
@@ -148,6 +153,7 @@ private:
     void stop();
 
     anira::Context& m_context;
+    std::shared_ptr<anira::Engine> m_engine;  // OnnxEngine; null without ONNX Runtime
     std::string m_hard_json;
     anira::ModelConfig m_model;
     std::vector<Spec> m_inputs;

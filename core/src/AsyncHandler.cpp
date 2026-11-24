@@ -4,6 +4,7 @@
 #include <anira/models/core/Error.h>
 #include <anira/models/core/Model.h>
 #include <anira/models/core/ModelSource.h>
+#include <anira/models/core/OnnxEngine.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -165,9 +166,17 @@ anira_status Ticket::error() const noexcept {
 
 AsyncHandler::AsyncHandler(anira::Context& context,
                            std::string_view model_json,
-                           const ModelSource& weights)
-    : m_context(context) {
+                           const ModelSource& weights,
+                           std::uint32_t threads)
+    : m_context(context)
+    , m_engine(make_onnx_engine(threads)) {
     auto description = nlohmann::json::parse(model_json);
+    if (m_engine) {
+        for (auto& entry : description.at("models")) {
+            const bool cpu = !entry.contains("provider") || entry.at("provider") == "cpu";
+            if (entry.at("engine") == "onnxruntime" && cpu) { entry["engine"] = k_onnx_engine_id; }
+        }
+    }
     std::optional<std::string> anchor;
     for (const char* side : {"inputs", "outputs"}) {
         auto& specs = side == std::string_view("inputs") ? m_inputs : m_outputs;
@@ -258,8 +267,10 @@ anira::PlanReport AsyncHandler::prepare(const anira::Async& contract) {
     m_lanes.resize(lanes);
     std::optional<anira::PlanReport> report;
     for (Lane& lane : m_lanes) {
-        lane.m_handler = std::make_unique<anira::InferenceHandler>(
-            m_context, anira::Pipeline().add_inference(m_model));
+        anira::Pipeline pipeline;
+        if (m_engine) { pipeline.add_engine(m_engine); }
+        pipeline.add_inference(m_model);
+        lane.m_handler = std::make_unique<anira::InferenceHandler>(m_context, pipeline);
         anira::PlanReport lane_report = lane.m_handler->prepare(hard);
         if (!report) { report.emplace(lane_report); }
     }

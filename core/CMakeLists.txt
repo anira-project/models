@@ -11,6 +11,7 @@ add_library(anira_models_core STATIC
     src/LogMel.cpp
     src/Model.cpp
     src/ModelSource.cpp
+    src/OnnxEngine.cpp
 )
 add_library(anira::models::core ALIAS anira_models_core)
 
@@ -22,4 +23,12 @@ target_include_directories(anira_models_core
 )
 target_link_libraries(anira_models_core PUBLIC anira::anira tanh::DspBasics
     PRIVATE nlohmann_json::nlohmann_json)
+# OnnxEngine: ONNX Runtime with a thread count per model, over anira's own ONNX Runtime library
+# (anira::onnxruntime, the one anira links), until anira takes a thread count per model. ONNX
+# Runtime's symbols stay private to this library.
+if(TARGET anira::onnxruntime)
+    target_link_libraries(anira_models_core PRIVATE anira::onnxruntime)
+    target_compile_definitions(anira_models_core PRIVATE ANIRA_MODELS_WITH_ONNX_ENGINE)
+    set_target_properties(anira_models_core PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+endif()
 anira_models_license(anira_models_core Apache-2.0)
