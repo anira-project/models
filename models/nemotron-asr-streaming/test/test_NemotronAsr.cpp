@@ -2,7 +2,7 @@
 
 // Nemotron 3.5 ASR Streaming (int4) on Moonshine's test recording (moonshine-ai/moonshine
 // test-assets/two_cities_16k.wav, a LibriVox reading of A Tale of Two Cities, public domain), in
-// test/ of the weights' HF repository. The tests need
+// test/ of the weights' HF repository (revision 27a3f8c). The tests need
 // ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 with onnx/ and test/; without it they skip.
 
 #include <anira/models/core/ModelSource.h>
