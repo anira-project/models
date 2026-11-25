@@ -20,6 +20,6 @@ anira_models_embed_text(anira_models_nemotron_diarization_descriptions
     HEADER anira/models/nemotron_diarization/Descriptions.h
     FILES ${CMAKE_CURRENT_SOURCE_DIR}/nemotron-diarization.model.json)
 target_link_libraries(anira_models_nemotron_diarization
-    PUBLIC anira::models::core tanh::DspBasics
+    PUBLIC anira::models::core tanh::DSP
     PRIVATE anira_models_nemotron_diarization_descriptions)
 anira_models_license(anira_models_nemotron_diarization Apache-2.0)

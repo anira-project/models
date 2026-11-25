@@ -9,7 +9,7 @@
 #include <anira/models/parakeet_tdt/Descriptions.h>
 #include <anira/models/parakeet_tdt/Parakeet.h>
 #include <anira/models/parakeet_tdt/TdtGreedyDecoder.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -215,7 +215,7 @@ std::vector<core::Segment> Parakeet::run(anira::Context& context,
                                          double sample_rate) {
     std::vector<float> audio(mono.begin(), mono.end());
     if (sample_rate != k_sample_rate) {
-        thl::dsp_basics::Resampler resampler;
+        thl::dsp::utils::Resampler resampler;
         resampler.prepare(sample_rate, k_sample_rate, mono.size());
         audio.resize(resampler.max_output(mono.size()));
         audio.resize(resampler.process(mono, audio));

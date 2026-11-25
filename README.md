@@ -67,7 +67,7 @@ just test
 ```
 
 Requirements: CMake ≥ 3.25, Ninja, clang, `just`. Dependencies, all fetched by CMake: anira,
-tanh-lib (Core and DspBasics, both Apache-2.0), nlohmann_json (the release anira uses; anira's
+tanh-lib (Core, Apache-2.0, and DSP, statically: only its Apache-2.0 Resampler is used), nlohmann_json (the release anira uses; anira's
 copy when it brings one) and, for the tests, googletest.
 
 ### Offline
@@ -112,7 +112,7 @@ or backend. It prints each format's time per call. A model's export scripts live
 
 ## Licence
 
-[Apache-2.0](LICENSE), like anira and tanh-lib's Core and DspBasics. One licence per library
+[Apache-2.0](LICENSE), like anira, tanh-lib's Core and the Apache-2.0 files of tanh-lib's DSP (its Resampler). One licence per library
 target: configure fails if an Apache-2.0 target links AGPL code (`cmake/licenses.cmake`). Model
 weights keep the licence of their upstream project, listed in each model's `catalog.json` and on its
 Hugging Face card.

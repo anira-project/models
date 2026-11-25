@@ -21,6 +21,6 @@ anira_models_embed_text(anira_models_nemotron_asr_streaming_descriptions
     HEADER anira/models/nemotron_asr_streaming/Descriptions.h
     FILES ${_nemotron_asr_descriptions})
 target_link_libraries(anira_models_nemotron_asr_streaming
-    PUBLIC anira::models::core tanh::DspBasics
+    PUBLIC anira::models::core tanh::DSP
     PRIVATE anira_models_nemotron_asr_streaming_descriptions)
 anira_models_license(anira_models_nemotron_asr_streaming Apache-2.0)

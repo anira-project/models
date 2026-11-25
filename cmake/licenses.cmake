@@ -6,12 +6,16 @@
 #   anira_models_license(<target> <Apache-2.0|AGPL-3.0-only>)   tags one of this repo's targets
 #   anira_models_check_licenses()                                fails configure on a violation
 #
-# tanh-lib's AGPL components count as AGPL; its Core and DspBasics are Apache-2.0.
+# tanh-lib's AGPL components count as AGPL and its Core is Apache-2.0. Its DSP is licensed per file
+# (BaseProcessor and utils/Resampler are Apache-2.0, the rest AGPL): this repo uses only the
+# Apache-2.0 files, so tanh_dsp may be linked as a static library (the linker takes only the objects
+# used), never as a shared one, which would ship its AGPL code.
 
 include_guard(GLOBAL)
 
 set(_anira_models_agpl_targets
-    tanh_state tanh_dsp tanh_resonator tanh_modulation tanh_audio_io tanh_net)
+    tanh_state tanh_resonator tanh_modulation tanh_audio_io tanh_net)
+set(_anira_models_per_file_targets tanh_dsp)
 
 function(anira_models_license target license)
     if(NOT license MATCHES "^(Apache-2.0|AGPL-3.0-only)$")
@@ -29,6 +33,11 @@ function(_anira_models_is_agpl target out)
     set(_agpl FALSE)
     if(target IN_LIST _anira_models_agpl_targets)
         set(_agpl TRUE)
+    elseif(target IN_LIST _anira_models_per_file_targets)
+        get_target_property(_type ${target} TYPE)
+        if(NOT _type STREQUAL "STATIC_LIBRARY")
+            set(_agpl TRUE)
+        endif()
     else()
         get_target_property(_license ${target} ANIRA_MODELS_LICENSE)
         if(_license STREQUAL "AGPL-3.0-only")

@@ -23,6 +23,6 @@ anira_models_embed_text(anira_models_moonshine_streaming_descriptions
     FILES ${_moonshine_descriptions})
 
 target_link_libraries(anira_models_moonshine_streaming
-    PUBLIC anira::models::core tanh::DspBasics
+    PUBLIC anira::models::core tanh::DSP
     PRIVATE anira_models_moonshine_streaming_descriptions nlohmann_json::nlohmann_json)
 anira_models_license(anira_models_moonshine_streaming Apache-2.0)

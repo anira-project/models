@@ -23,5 +23,5 @@ anira_models_embed_text(anira_models_parakeet_tdt_descriptions
     FILES ${_parakeet_descriptions})
 target_link_libraries(anira_models_parakeet_tdt
     PUBLIC anira::models::core
-    PRIVATE anira_models_parakeet_tdt_descriptions tanh::DspBasics)
+    PRIVATE anira_models_parakeet_tdt_descriptions tanh::DSP)
 anira_models_license(anira_models_parakeet_tdt Apache-2.0)

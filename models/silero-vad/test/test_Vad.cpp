@@ -15,7 +15,7 @@
 #include <anira/models/silero_vad/Vad.h>
 #include <anira/models/silero_vad/VadSegmenter.h>
 #include <gtest/gtest.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -60,7 +60,7 @@ std::vector<float> golden() {
 }
 
 std::vector<float> resample(std::span<const float> in, double from, double to) {
-    thl::dsp_basics::Resampler resampler;
+    thl::dsp::utils::Resampler resampler;
     resampler.prepare(from, to, in.size());
     std::vector<float> out(resampler.max_output(in.size()));
     out.resize(resampler.process(in, out));

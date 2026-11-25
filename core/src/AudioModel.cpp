@@ -5,7 +5,7 @@
 #include <anira/abi/tensor.h>
 #include <anira/models/core/AudioModel.h>
 #include <anira/models/core/Error.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -24,7 +24,7 @@ namespace {
 // Input samples a resampler needs beyond an output sample's centre before it emits that sample:
 // the first output comes after lookahead + 1 input samples.
 std::size_t resampler_lookahead(double input_rate, double output_rate) {
-    thl::dsp_basics::Resampler probe;
+    thl::dsp::utils::Resampler probe;
     probe.prepare(input_rate, output_rate, 1);
     if (probe.is_passthrough()) { return 0; }
     const float zero = 0.0f;

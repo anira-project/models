@@ -5,7 +5,7 @@
 #include <anira/models/core/HostAudio.h>
 #include <anira/models/core/LatentDecoder.h>
 #include <anira/models/core/Latents.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>

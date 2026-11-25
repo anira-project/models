@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <cmath>
@@ -70,8 +70,8 @@ struct PathTiming {
 
 /// host -> model -> host (an effect): anira gives as many samples as it gets, `model_latency` late.
 inline PathTiming effect_timing(double host_rate, double model_rate, std::uint32_t model_latency) {
-    thl::dsp_basics::Resampler down;
-    thl::dsp_basics::Resampler up;
+    thl::dsp::utils::Resampler down;
+    thl::dsp::utils::Resampler up;
     down.prepare(host_rate, model_rate, 1);
     const std::size_t model_max = std::max<std::size_t>(down.max_output(1), model_latency);
     up.prepare(model_rate, host_rate, model_max);
@@ -116,7 +116,7 @@ inline PathTiming generator_timing(double host_rate,
                                    double model_rate,
                                    std::uint32_t model_latency) {
     const double ratio = model_rate / host_rate;
-    thl::dsp_basics::Resampler up;
+    thl::dsp::utils::Resampler up;
     const std::size_t model_max = static_cast<std::size_t>(std::ceil(ratio)) + 1;
     up.prepare(model_rate, host_rate, model_max);
     std::vector<float> model(model_max, 0.0F);

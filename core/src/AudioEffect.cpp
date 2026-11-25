@@ -4,7 +4,7 @@
 #include <anira/models/core/AudioEffect.h>
 #include <anira/models/core/Error.h>
 #include <anira/models/core/HostAudio.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>

@@ -3,7 +3,7 @@
 #pragma once
 
 #include <anira/anira.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <anira/anira.hpp>
 #include <array>
@@ -112,8 +112,8 @@ private:
     double m_host_rate = 0.0;
     std::size_t m_max_block = 0;
     std::size_t m_latency = 0;
-    thl::dsp_basics::Resampler m_down;
-    thl::dsp_basics::Resampler m_up;
+    thl::dsp::utils::Resampler m_down;
+    thl::dsp::utils::Resampler m_up;
     std::vector<float> m_mono;
     std::vector<float> m_model_audio;
     std::vector<float> m_up_audio;

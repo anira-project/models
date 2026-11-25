@@ -3,7 +3,7 @@
 #pragma once
 
 #include <anira/abi/status.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <anira/anira.hpp>
 #include <array>
@@ -120,7 +120,7 @@ private:
     std::size_t m_max_block = 0;
     std::uint32_t m_frame_latency = 0;
     std::size_t m_latency = 0;
-    thl::dsp_basics::Resampler m_resampler;
+    thl::dsp::utils::Resampler m_resampler;
     std::vector<float> m_mono;
     std::vector<float> m_resampled;
     std::array<float*, 1> m_plane{};

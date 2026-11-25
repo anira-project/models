@@ -10,7 +10,7 @@
 #include <anira/models/core/SpscQueue.h>
 #include <anira/models/core/Vocabulary.h>
 #include <anira/models/core/Words.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <anira/anira.hpp>
 #include <array>
@@ -136,7 +136,7 @@ private:
     core::LogMel m_mel;
     double m_host_rate = k_sample_rate;
     std::size_t m_max_block = 0;
-    thl::dsp_basics::Resampler m_resampler;
+    thl::dsp::utils::Resampler m_resampler;
     std::vector<float> m_resampled;
     std::vector<float> m_mono;  // a host tensor's downmix
     Block m_pending;

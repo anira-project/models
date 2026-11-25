@@ -11,7 +11,7 @@
 #include <anira/models/core/Segment.h>
 #include <anira/models/nemotron_asr_streaming/NemotronAsr.h>
 #include <gtest/gtest.h>
-#include <tanh/dsp-basics/Resampler.h>
+#include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -124,7 +124,7 @@ TEST(NemotronAsr, StreamsRevisionsAt48kInAutoMode) {
         GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/nemotron-3.5-asr-streaming-int4 is missing";
     }
     const std::vector<float> at_16k = opening(*dir);
-    thl::dsp_basics::Resampler up;
+    thl::dsp::utils::Resampler up;
     up.prepare(16000.0, 48000.0, at_16k.size());
     std::vector<float> audio(up.max_output(at_16k.size()));
     audio.resize(up.process(at_16k, audio));

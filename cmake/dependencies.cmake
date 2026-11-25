@@ -18,14 +18,14 @@ set(ANIRA_MODELS_ANIRA_GIT_TAG c9c146b2555215fbe3d5e81564b0c71558649c42
 # ANIRA_VERSION_STRING of the tested commit (anira's generated <anira/abi/build_info.h>).
 set(_anira_models_tested_version "3.0.0-alpha.3")
 
-# tanh-lib with the two Apache-2.0 components only: Core and DspBasics (resampling, mel features).
+# tanh-lib with Core (Apache-2.0) and DSP, statically: DSP is licensed per file, and this repo uses
+# only its Apache-2.0 files (utils/Resampler), so the linker takes only their objects.
 # anira builds its own private copy of tanh-lib's core (anira_tanh_lib, in thl::anira) whatever is
 # declared here, so the two never meet and need not be the same commit.
 if(NOT TARGET tanh::Core)
     set(TANH_BUILD_CORE ON)
-    set(TANH_BUILD_DSP_BASICS ON)
     set(TANH_BUILD_STATE OFF)
-    set(TANH_BUILD_DSP OFF)
+    set(TANH_BUILD_DSP ON)
     set(TANH_BUILD_MODULATION OFF)
     set(TANH_BUILD_AUDIO_IO OFF)
     set(TANH_BUILD_NET OFF)
@@ -36,15 +36,19 @@ if(NOT TARGET tanh::Core)
     set(TANH_LOG_COMPILED_MAX_LEVEL 4)
     FetchContent_Declare(tanh-lib
         GIT_REPOSITORY https://github.com/tanh-lab/tanh-lib.git
-        # tanh-lab/tanh-lib feat/dsp-basics: DspBasics on top of tanh-tooling v0.3.0. Local only so far: build with FETCHCONTENT_SOURCE_DIR_TANH-LIB until it is
-        # merged, then pin the merge commit here.
+        # tanh-lab/tanh-lib feat/permissive-dsp: the Resampler in DSP, Apache-2.0 per file. Build
+        # with FETCHCONTENT_SOURCE_DIR_TANH-LIB until it is merged, then pin the merge commit here.
         GIT_TAG 1566356a3d6d490716ab79fd5840a1c60aaf7e26)
+    # Static whatever the parent builds: only the Apache-2.0 objects of DSP get linked.
+    set(_anira_models_shared_libs ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
     FetchContent_MakeAvailable(tanh-lib)
+    set(BUILD_SHARED_LIBS ${_anira_models_shared_libs})
 endif()
-if(NOT TARGET tanh::DspBasics)
+if(NOT TARGET tanh::DSP)
     message(FATAL_ERROR
-        "anira-models needs tanh-lib's DspBasics component (Apache-2.0): the tanh-lib in this "
-        "build has none. Set TANH_BUILD_DSP_BASICS ON where tanh-lib is added.")
+        "anira-models needs tanh-lib's DSP component (its Apache-2.0 Resampler): the tanh-lib in "
+        "this build has none. Set TANH_BUILD_DSP ON where tanh-lib is added.")
 endif()
 
 if(TARGET anira::anira)

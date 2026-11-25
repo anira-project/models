@@ -26,7 +26,7 @@ target_include_directories(anira_models_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
-target_link_libraries(anira_models_core PUBLIC anira::anira tanh::DspBasics
+target_link_libraries(anira_models_core PUBLIC anira::anira tanh::DSP
     PRIVATE nlohmann_json::nlohmann_json)
 # OnnxEngine: ONNX Runtime with a thread count per model, over anira's own ONNX Runtime library
 # (anira::onnxruntime, the one anira links), until anira takes a thread count per model. ONNX
