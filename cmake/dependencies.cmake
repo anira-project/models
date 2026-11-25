@@ -36,9 +36,8 @@ if(NOT TARGET tanh::Core)
     set(TANH_LOG_COMPILED_MAX_LEVEL 4)
     FetchContent_Declare(tanh-lib
         GIT_REPOSITORY https://github.com/tanh-lab/tanh-lib.git
-        # tanh-lab/tanh-lib feat/permissive-dsp: the Resampler in DSP, Apache-2.0 per file. Build
-        # with FETCHCONTENT_SOURCE_DIR_TANH-LIB until it is merged, then pin the merge commit here.
-        GIT_TAG 1566356a3d6d490716ab79fd5840a1c60aaf7e26)
+        # tanh-lab/tanh-lib#115: the Resampler in DSP, Apache-2.0 per file.
+        GIT_TAG e999959cf80b3e86f0701a325803438fe79060bd)
     # Static whatever the parent builds: only the Apache-2.0 objects of DSP get linked.
     set(_anira_models_shared_libs ${BUILD_SHARED_LIBS})
     set(BUILD_SHARED_LIBS OFF)
