@@ -4,7 +4,8 @@
 // rate of 44.1 kHz, as anira's handler with the model built in: at that rate the output is the
 // input times the gain exactly get_latency() (anira's) later, in any blocks; at 48 kHz, through
 // both resamplers, a band-limited signal comes out the same way within the filters' ripple; every
-// channel carries the downmix's result; run() gives the output without the latency.
+// channel carries the downmix's result; run() gives the output without the latency. At every
+// common host rate, and in real time on a clock, the output has no artefacts.
 
 #include <GainDescriptions.h>
 #include <anira/anira.h>
@@ -16,11 +17,14 @@
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <numbers>
 #include <span>
+#include <thread>
 #include <vector>
 
 namespace core = anira::models::core;
@@ -104,6 +108,114 @@ TEST(AudioEffect, At48kTheOutputIsTheInputThroughTheModelLatencyLater) {
         worst = std::max(worst, std::abs(audio[i] - (k_gain * input[i - latency])));
     }
     EXPECT_LT(worst, 2e-3F) << "latency " << latency;
+}
+
+namespace {
+
+/// The input, two sines in the passband of every rate below (at 16 kHz it ends near 7 kHz), at
+/// any (fractional) sample position.
+double two_sines_at(double position, double rate) {
+    const double t = 2.0 * std::numbers::pi * position / rate;
+    return 0.25 * (std::sin(440.0 * t) + std::sin(3000.0 * t));
+}
+
+struct Fit {
+    double m_fraction = 0.0;  ///< the delay beyond get_latency(), in samples
+    float m_worst = 0.0F;     ///< the largest difference left
+};
+
+/// The output against the input through the model (the gain) get_latency() + a fraction later,
+/// after `settle` samples (the resamplers' filters filling from silence): the fraction that fits
+/// best (a resampled path delays by a fraction of a host sample that an integer latency cannot
+/// say) and the largest difference left, which a click, a dropped or repeated sample or a step at a
+/// block edge would raise far above the filters' ripple.
+Fit fit(const std::vector<float>& output, std::size_t latency, std::size_t settle, double rate) {
+    Fit best{.m_fraction = 0.0, .m_worst = 1e9F};
+    for (int step = -100; step <= 100; ++step) {
+        const double fraction = step / 100.0;
+        float worst = 0.0F;
+        for (std::size_t i = latency + settle; i < output.size(); ++i) {
+            const double expected =
+                k_gain * two_sines_at(static_cast<double>(i - latency) - fraction, rate);
+            worst = std::max(worst, std::abs(output[i] - static_cast<float>(expected)));
+        }
+        if (worst < best.m_worst) { best = {.m_fraction = fraction, .m_worst = worst}; }
+    }
+    return best;
+}
+
+std::vector<float> two_sines(std::size_t n, double rate) {
+    std::vector<float> out(n);
+    for (std::size_t i = 0; i < n; ++i) {
+        out[i] = static_cast<float>(two_sines_at(static_cast<double>(i), rate));
+    }
+    return out;
+}
+
+}  // namespace
+
+// The resamplers and the model in between add nothing: at every common host rate, in irregular
+// blocks, the output is the input through the model, get_latency() later, within the filters'
+// ripple (a click, a dropped or repeated sample, a step at a block edge would be far above it).
+TEST(AudioEffect, AtEveryHostRateTheOutputHasNoArtefacts) {
+    anira::Context context{anira::ContextConfig{}};
+    const std::array<double, 8>
+        rates{16000.0, 22050.0, 24000.0, 32000.0, 44100.0, 48000.0, 88200.0, 96000.0};
+    const std::array<std::size_t, 5> sizes{512, 1, 333, 64, 129};
+    for (const double rate : rates) {
+        GainEffect effect(context);
+        effect.prepare(rate, 512);
+        const auto n = static_cast<std::size_t>(rate);  // a second
+        const std::vector<float> input = two_sines(n, rate);
+        std::vector<float> audio = input;
+        std::size_t k = 0;
+        for (std::size_t start = 0; start < audio.size(); ++k) {
+            const std::size_t count = std::min(sizes[k % sizes.size()], audio.size() - start);
+            const anira::Tensor block = mono(std::span<float>(audio).subspan(start, count));
+            ASSERT_EQ(effect.process_wait(block, block, ANIRA_WAIT_FOREVER), ANIRA_OK) << rate;
+            start += count;
+        }
+        const Fit f = fit(audio, effect.get_latency(), static_cast<std::size_t>(rate / 10.0), rate);
+        EXPECT_LT(f.m_worst, 2e-3F)
+            << rate << " Hz, latency " << effect.get_latency() << " + " << f.m_fraction;
+        EXPECT_LT(std::abs(f.m_fraction), 1.0) << rate << " Hz";
+        std::printf("[ info ] %.0f Hz: latency %zu + %.2f samples, worst %.2g\n",
+                    rate,
+                    effect.get_latency(),
+                    f.m_fraction,
+                    static_cast<double>(f.m_worst));
+    }
+}
+
+// In real time (process(), which never waits) on a clock, a block per period as an audio device
+// calls: no block is missed, and the output has no artefacts (a miss would fill a block with
+// what the miss policy gives, not the input through the model).
+TEST(AudioEffect, InRealTimeOnAClockNoBlockIsMissedAndTheOutputHasNoArtefacts) {
+    anira::Context context{anira::ContextConfig{}};
+    for (const double rate : {24000.0, 48000.0, 96000.0}) {
+        constexpr std::size_t k_block = 256;
+        GainEffect effect(context);
+        effect.prepare(rate, k_block);
+        const std::vector<float> input = two_sines(static_cast<std::size_t>(rate), rate);
+        std::vector<float> audio = input;
+        const auto period = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+            std::chrono::duration<double>(static_cast<double>(k_block) / rate));
+        auto next = std::chrono::steady_clock::now();
+        std::size_t missed = 0;
+        for (std::size_t start = 0; start + k_block <= audio.size(); start += k_block) {
+            const anira::Tensor block = mono(std::span<float>(audio).subspan(start, k_block));
+            const anira_status status = effect.process(block, block);
+            ASSERT_FALSE(ANIRA_FAILED(status)) << rate;
+            if (status == ANIRA_MISSED) { ++missed; }
+            next += period;
+            std::this_thread::sleep_until(next);
+        }
+        EXPECT_EQ(missed, 0U) << rate << " Hz";
+        audio.resize(audio.size() / k_block * k_block);
+        const Fit f = fit(audio, effect.get_latency(), static_cast<std::size_t>(rate / 10.0), rate);
+        EXPECT_LT(f.m_worst, 2e-3F)
+            << rate << " Hz, latency " << effect.get_latency() << " + " << f.m_fraction;
+    }
 }
 
 TEST(AudioEffect, EveryChannelCarriesTheDownmixsResult) {
