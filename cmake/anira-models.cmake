@@ -43,11 +43,11 @@ set(ANIRA_MODELS_CACHE_DIR "${_anira_models_default_cache}" CACHE PATH
     "Where downloaded model files are kept, shared by every build and project")
 unset(_anira_models_default_cache)
 
-set(_anira_models_engines onnxruntime litert tflite libtorch executorch coreml)
-
 function(_anira_models_enabled_engines out)
+    # Here, not at file scope: a project that includes this file from a parent directory calls
+    # the functions where a directory variable of models' is not visible.
     set(_enabled "")
-    foreach(_engine IN LISTS _anira_models_engines)
+    foreach(_engine IN ITEMS onnxruntime litert tflite libtorch executorch coreml)
         string(TOUPPER "${_engine}" _upper)
         if(ANIRA_WITH_${_upper} OR TARGET anira::${_engine})
             list(APPEND _enabled ${_engine})
