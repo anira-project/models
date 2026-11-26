@@ -1,6 +1,6 @@
 {
   "repo": "anira-project/nemotron-3.5-asr-streaming-int4",
-  "revision": "bc14dc1fb2920e0855dae031fbc3ebf74f54a7de",
+  "revision": "4e7bd1c52d7b3ae1048572c7ea1a8bf1bfca4b50",
   "license": "OpenMDW-1.1",
   "files": [
     {"path": "LICENSE", "size": 2629, "sha256": "be21b29b1c69af5b4a4e60a6bd7bc933eec374e52be29d1ebb9e6a17a6588491"},

@@ -94,6 +94,8 @@ class Format:
 
     def __call__(self, inputs):
         if self.engine == "coreml":
+            # Core ML takes integers as int32.
+            inputs = [v.astype(np.int32) if v.dtype == np.int64 else v for v in inputs]
             feed = {n: v.reshape(s) if int(np.prod(s)) == v.size else v for n, s, v in zip(self.names, self.shapes, inputs)}
             out = self.model.predict(feed)
             return [out[n] for n in self.out_names]
@@ -126,6 +128,15 @@ class Format:
         return [np.asarray(o.detach() if isinstance(o, torch.Tensor) else o) for o in out]
 
 
+def input_values(rng, tensor):
+    """A call's values for an input: noise for a float tensor, ones (every position valid, as a mask
+    or a length wants) for an integer or boolean one, in the description's dtype."""
+    dtype = np.dtype(tensor.get("dtype", "float32"))
+    if np.issubdtype(dtype, np.floating):
+        return (rng.standard_normal(shape(tensor)) * 0.1).astype(dtype)
+    return np.ones(shape(tensor), dtype)
+
+
 def bind(names, keys):
     """The signature key of each name: its own where one matches, else the next unused sorted key."""
     rest = iter(sorted(k for k in keys if k not in names))
@@ -136,7 +147,8 @@ def stream(run, description, calls, fresh_each_call=False):
     """The outputs of consecutive calls, each output list without the state outputs."""
     inputs, outputs = description["inputs"], description["outputs"]
     out_index = {t["name"]: i for i, t in enumerate(outputs)}
-    states = {i: np.zeros(shape(t), np.float32) for i, t in enumerate(inputs) if t.get("state_source")}
+    dtypes = [np.dtype(t.get("dtype", "float32")) for t in inputs]
+    states = {i: np.zeros(shape(t), dtypes[i]) for i, t in enumerate(inputs) if t.get("state_source")}
     results = []
     for values in calls:
         feed = [states[i] if i in states else values[i] for i in range(len(inputs))]
@@ -144,7 +156,7 @@ def stream(run, description, calls, fresh_each_call=False):
             feed = [np.zeros_like(states[i]) if i in states else values[i] for i in range(len(inputs))]
         out = run(feed)
         for i in states:
-            states[i] = np.asarray(out[out_index[inputs[i]["state_source"]]], np.float32)
+            states[i] = np.asarray(out[out_index[inputs[i]["state_source"]]], dtypes[i])
         state_outputs = {out_index[inputs[i]["state_source"]] for i in states}
         results.append([np.asarray(o, np.float32) for k, o in enumerate(out) if k not in state_outputs])
     return results
@@ -207,8 +219,7 @@ def check(path, weights_root):
         return True, f"{os.path.basename(path)}: no weights here"
 
     rng = np.random.default_rng(0)
-    calls = [[(rng.standard_normal(shape(t)) * 0.1).astype(np.float32) for t in description["inputs"]]
-             for _ in range(CALLS)]
+    calls = [[input_values(rng, t) for t in description["inputs"]] for _ in range(CALLS)]
     reference_label = next((r for r in REFERENCES if r in formats), next(iter(formats)))
     reference_run = timed(formats[reference_label])
     reference = stream(reference_run, description, calls)

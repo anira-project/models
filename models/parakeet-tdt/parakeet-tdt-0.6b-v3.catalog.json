@@ -4,9 +4,9 @@
   "license": "CC-BY-4.0",
   "files": [
     {"path": "LICENSE", "size": 18657, "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"},
-    {"path": "coreml/decoder_joint.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "size": 10963, "sha256": "7fe4ec70d654cf657784fe4022a28740ba2f38e24aa4a727d077ea876e472e29"},
-    {"path": "coreml/decoder_joint.mlpackage/Data/com.apple.CoreML/weights/weight.bin", "engine": "coreml", "size": 72494528, "sha256": "1b4cfbad649f43b5014704c7fe93b5c6e636bfd09734e2cf1867a1f259648327"},
-    {"path": "coreml/decoder_joint.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "2d2231ed25576654bec4c9fd1603b95998a08ac3ab0162c625c0577f56615f89"},
+    {"path": "coreml/decoder_joint.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "model": "parakeet-decoder-joint.model.json", "size": 10963, "sha256": "7fe4ec70d654cf657784fe4022a28740ba2f38e24aa4a727d077ea876e472e29"},
+    {"path": "coreml/decoder_joint.mlpackage/Data/com.apple.CoreML/weights/weight.bin", "engine": "coreml", "model": "parakeet-decoder-joint.model.json", "size": 72494528, "sha256": "1b4cfbad649f43b5014704c7fe93b5c6e636bfd09734e2cf1867a1f259648327"},
+    {"path": "coreml/decoder_joint.mlpackage/Manifest.json", "engine": "coreml", "model": "parakeet-decoder-joint.model.json", "size": 617, "sha256": "2d2231ed25576654bec4c9fd1603b95998a08ac3ab0162c625c0577f56615f89"},
     {"path": "coreml/encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel", "engine": "coreml", "size": 792056, "sha256": "4d54cfe2703b1dfeaee8fd37b9d7e4f6930b4572cc56d29644376670188c9b56"},
     {"path": "coreml/encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin", "engine": "coreml", "size": 1205520832, "sha256": "fd9eca4f2622138a0b6e3f73b05d35130371e5dcf6a504db3e9bd134db14eb09"},
     {"path": "coreml/encoder.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "193aeb7dbd28721fdc4725353f715149cc5e90cca15f7eeaf9b8d53c5fc9d123"},
