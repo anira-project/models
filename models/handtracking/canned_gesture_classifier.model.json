@@ -6,7 +6,7 @@
     {"engine": "libtorch", "path": "libtorch/canned_gesture_classifier.pt"},
     {"engine": "executorch", "path": "executorch/canned_gesture_classifier.pte"},
     {"engine": "executorch", "provider": "coreml", "path": "executorch/canned_gesture_classifier_coreml.pte"},
-    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/canned_gesture_classifier.mlpackage"}
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/canned_gesture_classifier.mlpackage", "tensors": {"scores": "Identity"}}
   ],
   "state": "stateless",
   "inputs": [

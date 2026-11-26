@@ -89,6 +89,9 @@ endforeach()
 # The Core ML exports against ONNX Runtime, through core::coreml_engine() (temporary).
 if(ANIRA_MODELS_COREML_ENGINE AND TANH_OPERATING_SYSTEM MATCHES "^(macOS|iOS)$")
     target_sources(anira-models-tests PRIVATE test_CoreMl.cpp)
+    if(TARGET anira::models::silero_vad)
+        target_compile_definitions(anira-models-tests PRIVATE ANIRA_MODELS_HAS_SILERO_VAD)
+    endif()
 endif()
 gtest_discover_tests(anira-models-tests)
 

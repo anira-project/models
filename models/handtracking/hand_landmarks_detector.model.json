@@ -6,7 +6,7 @@
     {"engine": "libtorch", "path": "libtorch/hand_landmarks_detector.pt"},
     {"engine": "executorch", "path": "executorch/hand_landmarks_detector.pte"},
     {"engine": "executorch", "provider": "coreml", "path": "executorch/hand_landmarks_detector_coreml.pte"},
-    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/hand_landmarks_detector.mlpackage"}
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/hand_landmarks_detector.mlpackage", "tensors": {"image": "input_1", "landmarks": "Identity", "presence": "Identity_1", "handedness": "Identity_2", "world_landmarks": "Identity_3"}}
   ],
   "state": "stateless",
   "inputs": [

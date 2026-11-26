@@ -6,7 +6,7 @@
     {"engine": "libtorch", "path": "libtorch/gesture_embedder.pt"},
     {"engine": "executorch", "path": "executorch/gesture_embedder.pte"},
     {"engine": "executorch", "provider": "coreml", "path": "executorch/gesture_embedder_coreml.pte"},
-    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/gesture_embedder.mlpackage"}
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/gesture_embedder.mlpackage", "tensors": {"embedding": "Identity"}}
   ],
   "state": "stateless",
   "inputs": [

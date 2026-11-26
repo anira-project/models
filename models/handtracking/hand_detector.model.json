@@ -6,7 +6,7 @@
     {"engine": "libtorch", "path": "libtorch/hand_detector.pt"},
     {"engine": "executorch", "path": "executorch/hand_detector.pte"},
     {"engine": "executorch", "provider": "coreml", "path": "executorch/hand_detector_coreml.pte"},
-    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/hand_detector.mlpackage"}
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/hand_detector.mlpackage", "tensors": {"image": "input_1", "boxes": "Identity", "scores": "Identity_1"}}
   ],
   "state": "stateless",
   "inputs": [
