@@ -189,19 +189,57 @@ NSURL* compiled(const std::string& path) {
     return cached;
 }
 
-// One MLModel: what one call at a time runs on.
-class Session {
+// Loaded models no session holds, per compiled model and compute units, for the next session to
+// take: anira loads a model again at every prepare (a plugin's every activate), and loading a
+// large Core ML model takes a second or more. A model serves one session at a time, never two.
+class ModelPool {
 public:
-    explicit Session(const Source& source) {
+    using Key = std::pair<std::string, MLComputeUnits>;
+
+    static ModelPool& instance() {
+        static ModelPool pool;
+        return pool;
+    }
+
+    MLModel* take(NSURL* compiled, MLComputeUnits units) {
+        {
+            const std::scoped_lock lock(m_mutex);
+            auto& free = m_free[Key(compiled.path.UTF8String, units)];
+            if (!free.empty()) {
+                MLModel* model = free.back();
+                free.pop_back();
+                return model;
+            }
+        }
         MLModelConfiguration* config = [[MLModelConfiguration alloc] init];
-        config.computeUnits = source.m_units;
+        config.computeUnits = units;
         NSError* error = nil;
-        m_model = [MLModel modelWithContentsOfURL:source.m_compiled
-                                    configuration:config
-                                            error:&error];
-        if (m_model == nil) {
+        MLModel* model = [MLModel modelWithContentsOfURL:compiled
+                                           configuration:config
+                                                   error:&error];
+        if (model == nil) {
             throw anira::Error(ANIRA_ERROR_MODEL_LOAD, "coreml engine: " + text_of(error));
         }
+        return model;
+    }
+
+    void give_back(NSURL* compiled, MLComputeUnits units, MLModel* model) {
+        const std::scoped_lock lock(m_mutex);
+        m_free[Key(compiled.path.UTF8String, units)].push_back(model);
+    }
+
+private:
+    std::mutex m_mutex;
+    std::map<Key, std::vector<MLModel*>> m_free;
+};
+
+// One MLModel: what one call at a time runs on, from the pool and back into it.
+class Session {
+public:
+    explicit Session(const Source& source)
+        : m_compiled(source.m_compiled)
+        , m_units(source.m_units)
+        , m_model(ModelPool::instance().take(source.m_compiled, source.m_units)) {
         NSDictionary<NSString*, MLFeatureDescription*>* inputs =
             m_model.modelDescription.inputDescriptionsByName;
         NSDictionary<NSString*, MLFeatureDescription*>* outputs =
@@ -223,6 +261,12 @@ public:
             }
         }
     }
+
+    ~Session() { ModelPool::instance().give_back(m_compiled, m_units, m_model); }
+    Session(const Session&) = delete;
+    Session& operator=(const Session&) = delete;
+    Session(Session&&) = delete;
+    Session& operator=(Session&&) = delete;
 
     anira_status run(anira::EngineContext& ctx) noexcept {
         @autoreleasepool {
@@ -343,6 +387,8 @@ private:
         return true;
     }
 
+    NSURL* m_compiled = nil;
+    MLComputeUnits m_units = MLComputeUnitsAll;
     MLModel* m_model = nil;
     std::vector<std::string> m_bound_inputs;
     std::vector<std::string> m_bound_outputs;
