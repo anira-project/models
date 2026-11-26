@@ -5,7 +5,8 @@
     {"engine": "litert", "path": "litert/mrp_strengjavera_encoder.tflite"},
     {"engine": "tflite", "path": "litert/mrp_strengjavera_encoder.tflite"},
     {"engine": "executorch", "path": "executorch/mrp_strengjavera_encoder.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/mrp_strengjavera_encoder_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/mrp_strengjavera_encoder_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/mrp_strengjavera_encoder.mlpackage"}
   ],
   "state": "stateful",
   "inputs": [

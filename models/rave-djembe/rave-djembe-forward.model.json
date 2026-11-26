@@ -5,7 +5,8 @@
     {"engine": "litert", "path": "litert/rave_forward.tflite"},
     {"engine": "tflite", "path": "litert/rave_forward.tflite"},
     {"engine": "executorch", "path": "executorch/rave_forward.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_forward_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_forward_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/rave_forward.mlpackage"}
   ],
   "state": "stateful",
   "inputs": [

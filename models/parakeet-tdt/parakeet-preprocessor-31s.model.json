@@ -2,7 +2,8 @@
   "models": [
     {"engine": "onnxruntime", "path": "nemo128.onnx"},
     {"engine": "executorch", "path": "executorch/preprocessor.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/preprocessor_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/preprocessor_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/preprocessor.mlpackage"}
   ],
   "state": "stateless",
   "inputs": [

@@ -51,6 +51,9 @@ function(_anira_models_enabled_engines out)
         string(TOUPPER "${_engine}" _upper)
         if(ANIRA_WITH_${_upper} OR TARGET anira::${_engine})
             list(APPEND _enabled ${_engine})
+        elseif(_engine STREQUAL "coreml" AND ANIRA_MODELS_COREML_ENGINE
+               AND TANH_OPERATING_SYSTEM MATCHES "^(macOS|iOS)$")
+            list(APPEND _enabled coreml)  # core::coreml_engine(), until anira has one
         endif()
     endforeach()
     set(${out} ${_enabled} PARENT_SCOPE)

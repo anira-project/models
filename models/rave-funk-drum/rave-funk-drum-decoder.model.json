@@ -5,7 +5,8 @@
     {"engine": "litert", "path": "litert/rave_funk_drum_decoder.tflite"},
     {"engine": "tflite", "path": "litert/rave_funk_drum_decoder.tflite"},
     {"engine": "executorch", "path": "executorch/rave_funk_drum_decoder.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_funk_drum_decoder_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/rave_funk_drum_decoder_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/rave_funk_drum_decoder.mlpackage"}
   ],
   "state": "stateful",
   "anchor": "audio",

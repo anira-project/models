@@ -5,7 +5,8 @@
     {"engine": "tflite", "path": "litert/stateful_lstm.tflite"},
     {"engine": "executorch", "path": "executorch/stateful_lstm.pte"},
     {"engine": "executorch", "provider": "coreml", "path": "executorch/stateful_lstm_coreml.pte"},
-    {"engine": "libtorch", "path": "libtorch/stateful_lstm.pt"}
+    {"engine": "libtorch", "path": "libtorch/stateful_lstm.pt"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/stateful_lstm.mlpackage"}
   ],
   "state": "stateful",
   "inputs": [

@@ -2,6 +2,7 @@
 
 #include <anira/anira.h>
 #include <anira/models/core/AsyncHandler.h>
+#include <anira/models/core/CoreMlEngine.h>
 #include <anira/models/core/Error.h>
 #include <anira/models/core/Model.h>
 #include <anira/models/core/ModelSource.h>
@@ -279,6 +280,7 @@ anira::PlanReport AsyncHandler::prepare(const anira::Async& contract) {
     for (Lane& lane : m_lanes) {
         anira::Pipeline pipeline;
         if (m_engine) { pipeline.add_engine(m_engine); }
+        if (auto coreml = coreml_engine()) { pipeline.add_engine(coreml); }
         pipeline.add_inference(m_model);
         lane.m_handler = std::make_unique<anira::InferenceHandler>(m_context, pipeline);
         lane.m_resets = m_resets.load(std::memory_order_relaxed);

@@ -33,11 +33,17 @@ option(ANIRA_MODELS_WITH_RAVE_DJEMBE "Build anira::models::rave_djembe" ${PROJEC
 option(ANIRA_MODELS_WITH_RAVE_FUNK_DRUM "Build anira::models::rave_funk_drum" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_WITH_RAVE_MAGNETIC_RESONATOR_PIANO "Build anira::models::rave_magnetic_resonator_piano" ${PROJECT_IS_TOP_LEVEL})
 option(ANIRA_MODELS_WITH_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
+# Temporary, until anira has a Core ML engine: core::coreml_engine() runs the Core ML exports
+# (.mlpackage) on macOS and iOS, and the weights fetch takes the "coreml" files.
+option(ANIRA_MODELS_COREML_ENGINE "Build core::coreml_engine() (macOS, iOS)" OFF)
 option(ANIRA_MODELS_LINK_COMPILE_COMMANDS
        "Link build/compile_commands.json, which clangd reads, to this tree's (top-level builds only)" OFF)
 
 # Platform axes: TANH_OPERATING_SYSTEM, TANH_BINARY_FORMAT. Every OS decision keys on these.
 include(cmake/tanh/platform.cmake)
+if(ANIRA_MODELS_COREML_ENGINE AND TANH_OPERATING_SYSTEM MATCHES "^(macOS|iOS)$")
+    enable_language(OBJCXX)  # core/src/CoreMlEngine.mm; at the top, where CMake wants a language
+endif()
 
 if(ANIRA_MODELS_LINK_COMPILE_COMMANDS)
     include(cmake/tanh/compile-commands.cmake)

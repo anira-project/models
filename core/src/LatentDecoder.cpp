@@ -5,6 +5,7 @@
 #include <anira/models/core/HostAudio.h>
 #include <anira/models/core/LatentDecoder.h>
 #include <anira/models/core/Latents.h>
+#include <anira/models/core/Model.h>
 #include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
@@ -30,7 +31,7 @@ LatentDecoder::LatentDecoder(anira::Context& context,
     : m_model(std::move(model))
     , m_contract(std::move(contract))
     , m_stream(stream)
-    , m_handler(context, anira::Pipeline().add_inference(m_model))
+    , m_handler(context, model_pipeline(m_model))
     , m_delay(std::make_unique<detail::HostDelay>()) {
     if (stream.m_dims == 0 || stream.m_dims > k_max_latents || stream.m_hop == 0) {
         throw Error("LatentDecoder: unsupported latent size or hop");

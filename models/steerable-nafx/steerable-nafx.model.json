@@ -5,7 +5,8 @@
     {"engine": "tflite", "path": "litert/steerable-nafx.tflite"},
     {"engine": "litert", "path": "litert/steerable-nafx.tflite"},
     {"engine": "executorch", "path": "executorch/steerable-nafx.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/steerable-nafx_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/steerable-nafx_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/steerable-nafx.mlpackage"}
   ],
   "inputs": [
     {

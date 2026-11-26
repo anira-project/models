@@ -5,7 +5,8 @@
     {"engine": "tflite", "path": "litert/silero_vad_16k.tflite"},
     {"engine": "executorch", "path": "executorch/silero_vad_16k.pte"},
     {"engine": "executorch", "provider": "coreml", "path": "executorch/silero_vad_16k_coreml.pte"},
-    {"engine": "libtorch", "path": "libtorch/silero_vad_16k.pt"}
+    {"engine": "libtorch", "path": "libtorch/silero_vad_16k.pt"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/silero_vad_16k.mlpackage"}
   ],
   "state": "stateful",
   "inputs": [

@@ -36,4 +36,13 @@ if(TARGET anira::onnxruntime)
     target_compile_definitions(anira_models_core PRIVATE ANIRA_MODELS_WITH_ONNX_ENGINE)
     set_target_properties(anira_models_core PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
 endif()
+# CoreMlEngine: Core ML through Apple's framework, until anira has a Core ML engine (the option's
+# comment in the top CMakeLists.txt); elsewhere coreml_engine() is null.
+if(ANIRA_MODELS_COREML_ENGINE AND TANH_OPERATING_SYSTEM MATCHES "^(macOS|iOS)$")
+    target_sources(anira_models_core PRIVATE src/CoreMlEngine.mm)
+    set_source_files_properties(src/CoreMlEngine.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(anira_models_core PRIVATE "-framework CoreML" "-framework Foundation")
+else()
+    target_sources(anira_models_core PRIVATE src/CoreMlEngineNone.cpp)
+endif()
 anira_models_license(anira_models_core Apache-2.0)

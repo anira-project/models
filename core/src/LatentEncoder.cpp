@@ -5,6 +5,7 @@
 #include <anira/models/core/HostAudio.h>
 #include <anira/models/core/LatentEncoder.h>
 #include <anira/models/core/Latents.h>
+#include <anira/models/core/Model.h>
 
 #include <algorithm>
 #include <anira/anira.hpp>
@@ -26,7 +27,7 @@ LatentEncoder::LatentEncoder(anira::Context& context,
                              std::uint32_t dims)
     : m_model(std::move(model))
     , m_contract(std::move(contract))
-    , m_handler(context, anira::Pipeline().add_inference(m_model))
+    , m_handler(context, model_pipeline(m_model))
     , m_model_rate(model_rate)
     , m_hop(hop)
     , m_dims(dims) {

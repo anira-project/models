@@ -2,6 +2,7 @@
 
 #include <anira/abi/config.h>
 #include <anira/abi/enums.h>
+#include <anira/models/core/CoreMlEngine.h>
 #include <anira/models/core/Model.h>
 #include <anira/models/core/ModelSource.h>
 #include <anira/models/handtracking/Descriptions.h>
@@ -20,7 +21,9 @@ namespace ht = anira::models::handtracking;
 // No weights are opened before prepare: any directory serves as their root here.
 void expect_model(std::string_view json, uint32_t inputs, uint32_t outputs) {
     const anira::ModelConfig model = core::load_model(json, core::ModelSource::directory("."));
-    EXPECT_EQ(model.model_count(), 6U);  // litert, tflite, onnxruntime, libtorch, executorch twice
+    // litert, tflite, onnxruntime, libtorch, executorch twice, and Core ML where this build has
+    // core::coreml_engine()
+    EXPECT_EQ(model.model_count(), core::coreml_engine() != nullptr ? 7U : 6U);
     EXPECT_EQ(anira_model_config_num_inputs(model.native()), inputs);
     EXPECT_EQ(anira_model_config_num_outputs(model.native()), outputs);
 }

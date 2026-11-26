@@ -4,6 +4,7 @@
 #include <anira/models/core/AudioEffect.h>
 #include <anira/models/core/Error.h>
 #include <anira/models/core/HostAudio.h>
+#include <anira/models/core/Model.h>
 #include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
@@ -26,8 +27,7 @@ namespace {
 
 anira::Pipeline pipeline_of(const anira::ModelConfig& model,
                             const std::shared_ptr<anira::Processor>& processor) {
-    anira::Pipeline pipeline;
-    pipeline.add_inference(model);
+    anira::Pipeline pipeline = model_pipeline(model);
     if (processor) { pipeline.add_processor(processor); }
     return pipeline;
 }

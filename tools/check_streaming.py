@@ -5,8 +5,8 @@
 # ///
 """Streams every description's weights over many consecutive calls, on every format it names that
 runs in Python (ONNX Runtime, LiteRT / TensorFlow Lite, ExecuTorch with XNNPACK or Core ML, LibTorch)
-and its native Core ML ML program (which the catalog ties to it: "model", until anira has the
-engine), with the same inputs and each format's state fed back as the description's state pairs say,
+and its native Core ML ML program (the entries of core::coreml_engine(), until anira has a Core
+ML engine), with the same inputs and each format's state fed back as the description's state pairs say,
 and checks:
 
   coverage   every model comes for every engine and backend: ONNX Runtime, LiteRT and TensorFlow
@@ -43,6 +43,7 @@ CALLS = 12
 TOLERANCE = 1e-3  # relative to the reference output's peak
 TOLERANCE_COREML = 2e-2  # Core ML programs, hand tracking's in float16
 REFERENCES = ("libtorch", "onnxruntime")
+COREML_ENGINE_ID = "org.anira-project.models.coreml"  # core/include/anira/models/core/CoreMlEngine.h
 REQUIRED = ("onnxruntime", "litert", "tflite", "libtorch", "executorch", "executorch/coreml", "executorch/vulkan",
             "coreml")
 # Formats a model cannot have yet, and why: reported, not failed.
@@ -128,13 +129,14 @@ class Format:
         return [np.asarray(o.detach() if isinstance(o, torch.Tensor) else o) for o in out]
 
 
-def input_values(rng, tensor):
-    """A call's values for an input: noise for a float tensor, ones (every position valid, as a mask
-    or a length wants) for an integer or boolean one, in the description's dtype."""
+def input_values(rng, tensor, length):
+    """A call's values for an input: noise for a float tensor; for an integer or boolean one, a
+    length (a name with "len") is `length`, the whole window, else ones (every position valid, as a
+    mask wants); in the description's dtype."""
     dtype = np.dtype(tensor.get("dtype", "float32"))
     if np.issubdtype(dtype, np.floating):
         return (rng.standard_normal(shape(tensor)) * 0.1).astype(dtype)
-    return np.ones(shape(tensor), dtype)
+    return np.full(shape(tensor), length if "len" in tensor["name"] else 1, dtype)
 
 
 def bind(names, keys):
@@ -177,7 +179,9 @@ def timed(run):
 def deviation(reference, other):
     worst = []
     for ref, got in zip(reference, other):
+        # nan anywhere (in the reference or the format) is a failure, not a pass of every comparison.
         worst.append(max(float(np.max(np.abs(r - g.reshape(r.shape)))) / (1.0 + float(np.max(np.abs(r))))
+                         if np.all(np.isfinite(r)) and np.all(np.isfinite(g)) else float("inf")
                          for r, g in zip(ref, got)))
     return worst
 
@@ -186,20 +190,16 @@ def check(path, weights_root):
     description = json.load(open(path))
     folder = os.path.dirname(path)
     name = os.path.basename(path)
-    repos, extras = {}, []
+    repos = {}
     for catalog_path in glob.glob(f"{folder}/*.catalog.json"):
         catalog = json.load(open(catalog_path))
         for f in catalog["files"]:
             repos[f["path"]] = catalog["repo"].split("/")[1]
-            if f.get("model") == name:  # a format for this description not in it yet
-                if f.get("engine") == "coreml":
-                    package = f["path"][:f["path"].index(".mlpackage") + len(".mlpackage")]
-                    if all(e["path"] != package for e in extras):
-                        repos[package] = repos[f["path"]]
-                        extras.append({"engine": "coreml", "path": package})
-                else:
-                    extras.append({"engine": f.get("engine"), "provider": f.get("provider"), "path": f["path"]})
-    entries = description["models"] + extras
+            if ".mlpackage/" in f["path"]:  # a Core ML entry names the package, a directory
+                repos[f["path"][:f["path"].index(".mlpackage") + len(".mlpackage")]] = repos[f["path"]]
+    # core::coreml_engine()'s entries, until anira has a Core ML engine: "coreml" here.
+    entries = [dict(e, engine="coreml", provider=None) if e["engine"] == COREML_ENGINE_ID else e
+               for e in description["models"]]
     present = {e["engine"] + ("/" + e["provider"] if e.get("provider") else "") for e in entries}
     gaps = KNOWN_GAPS.get(name, {})
     missing = [r for r in REQUIRED if r not in present and r not in gaps] if not name.endswith("-libtorch.model.json") else []
@@ -219,7 +219,10 @@ def check(path, weights_root):
         return True, f"{os.path.basename(path)}: no weights here"
 
     rng = np.random.default_rng(0)
-    calls = [[input_values(rng, t) for t in description["inputs"]] for _ in range(CALLS)]
+    # A length input's value: the last extent of the first float input, the window it measures.
+    length = next((shape(t)[-1] for t in description["inputs"]
+                   if np.issubdtype(np.dtype(t.get("dtype", "float32")), np.floating)), 1)
+    calls = [[input_values(rng, t, length) for t in description["inputs"]] for _ in range(CALLS)]
     reference_label = next((r for r in REFERENCES if r in formats), next(iter(formats)))
     reference_run = timed(formats[reference_label])
     reference = stream(reference_run, description, calls)

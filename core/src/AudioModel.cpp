@@ -5,6 +5,7 @@
 #include <anira/abi/tensor.h>
 #include <anira/models/core/AudioModel.h>
 #include <anira/models/core/Error.h>
+#include <anira/models/core/Model.h>
 #include <tanh/dsp/utils/Resampler.h>
 
 #include <algorithm>
@@ -55,7 +56,7 @@ AudioModel::AudioModel(anira::Context& context,
     : m_model(std::move(model))
     , m_contract(std::move(contract))
     , m_stream(stream)
-    , m_handler(context, anira::Pipeline().add_inference(m_model)) {}
+    , m_handler(context, model_pipeline(m_model)) {}
 
 anira::PlanReport AudioModel::prepare_stream(double sample_rate,
                                              std::size_t max_block,

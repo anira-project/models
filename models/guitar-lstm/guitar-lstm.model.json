@@ -5,7 +5,8 @@
     {"engine": "tflite", "path": "litert/GuitarLSTM.tflite"},
     {"engine": "litert", "path": "litert/GuitarLSTM.tflite"},
     {"engine": "executorch", "path": "executorch/GuitarLSTM-executorch.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/GuitarLSTM_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/GuitarLSTM_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/GuitarLSTM.mlpackage"}
   ],
   "inputs": [
     {

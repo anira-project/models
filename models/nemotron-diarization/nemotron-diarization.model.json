@@ -2,7 +2,8 @@
   "models": [
     {"engine": "onnxruntime", "path": "onnx/model_q4.onnx"},
     {"engine": "executorch", "path": "executorch/nemotron_diarization.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/nemotron_diarization_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/nemotron_diarization_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/nemotron_diarization.mlpackage"}
   ],
   "state": "stateless",
   "inputs": [

@@ -5,7 +5,8 @@
     {"engine": "onnxruntime", "path": "onnx/hand_landmarks_detector.onnx"},
     {"engine": "libtorch", "path": "libtorch/hand_landmarks_detector.pt"},
     {"engine": "executorch", "path": "executorch/hand_landmarks_detector.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "executorch/hand_landmarks_detector_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "executorch/hand_landmarks_detector_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "coreml/hand_landmarks_detector.mlpackage"}
   ],
   "state": "stateless",
   "inputs": [

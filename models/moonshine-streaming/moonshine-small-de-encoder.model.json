@@ -2,7 +2,8 @@
   "models": [
     {"engine": "onnxruntime", "path": "small-de/encoder.onnx"},
     {"engine": "executorch", "path": "small-de/executorch/encoder.pte"},
-    {"engine": "executorch", "provider": "coreml", "path": "small-de/executorch/encoder_coreml.pte"}
+    {"engine": "executorch", "provider": "coreml", "path": "small-de/executorch/encoder_coreml.pte"},
+    {"engine": "org.anira-project.models.coreml", "provider": "coreml", "path": "small-de/coreml/encoder.mlpackage"}
   ],
   "state": "stateful",
   "inputs": [
