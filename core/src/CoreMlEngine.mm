@@ -7,6 +7,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -94,25 +96,97 @@ struct Source {
     std::vector<std::string> m_output_names;
 };
 
-// The package at `path` compiled (.mlmodelc), once per process: anira loads a model again at every
-// prepare (a plugin's every activate), and compiling a large package takes seconds. The compiled
-// models stay in the temporary directory, for the system to clear.
+// What identifies a package's content: its files' relative paths and sizes, the small files whole
+// and of a large one (the weights) its first, middle and last MiB, and the OS (Core ML's compiled
+// format follows it). FNV-1a, as hex. Path-independent: a package written per process from
+// compiled-in weights hits the same compiled model.
+std::string content_key(NSString* package) {
+    constexpr std::uint64_t k_prime = 1099511628211ULL;
+    std::uint64_t hash = 14695981039346656037ULL;
+    const auto mix = [&](const void* data, std::size_t size) {
+        const auto* bytes = static_cast<const unsigned char*>(data);
+        for (std::size_t i = 0; i < size; ++i) { hash = (hash ^ bytes[i]) * k_prime; }
+    };
+    NSString* os = NSProcessInfo.processInfo.operatingSystemVersionString;
+    mix(os.UTF8String, std::strlen(os.UTF8String));
+    NSFileManager* files = NSFileManager.defaultManager;
+    NSArray<NSString*>* paths = [[files subpathsOfDirectoryAtPath:package error:nil]
+        sortedArrayUsingSelector:@selector(compare:)];
+    constexpr unsigned long long k_whole = 4ULL << 20U;
+    constexpr NSUInteger k_slice = 1U << 20U;
+    for (NSString* relative in paths) {
+        NSString* full = [package stringByAppendingPathComponent:relative];
+        NSDictionary* attributes = [files attributesOfItemAtPath:full error:nil];
+        if (![attributes.fileType isEqualToString:NSFileTypeRegular]) { continue; }
+        const unsigned long long size = attributes.fileSize;
+        mix(relative.UTF8String, std::strlen(relative.UTF8String));
+        mix(&size, sizeof(size));
+        NSFileHandle* handle = [NSFileHandle fileHandleForReadingAtPath:full];
+        if (handle == nil) { continue; }
+        const auto take = [&](unsigned long long offset, NSUInteger length) {
+            [handle seekToFileOffset:offset];
+            NSData* data = [handle readDataOfLength:length];
+            mix(data.bytes, data.length);
+        };
+        if (size <= k_whole) {
+            take(0, static_cast<NSUInteger>(size));
+        } else {
+            take(0, k_slice);
+            take(size / 2, k_slice);
+            take(size - k_slice, k_slice);
+        }
+        [handle closeFile];
+    }
+    std::array<char, 17> hex{};
+    std::snprintf(hex.data(), hex.size(), "%016llx", static_cast<unsigned long long>(hash));
+    return hex.data();
+}
+
+// The package at `path` compiled (.mlmodelc): anira loads a model again at every prepare (a
+// plugin's every activate) and a host may run each plugin in a process of its own, while compiling
+// a large package takes seconds. So the compiled model is kept in the user's caches,
+// <Caches>/anira-models/coreml/<content key>.mlmodelc, shared by every process, and remembered
+// in this one.
 NSURL* compiled(const std::string& path) {
     static std::mutex mutex;
     static std::map<std::string, NSURL*> done;
     const std::scoped_lock lock(mutex);
     if (const auto found = done.find(path); found != done.end()) { return found->second; }
-    NSError* error = nil;
+    NSString* package = @(path.c_str());
+    NSFileManager* files = NSFileManager.defaultManager;
+    NSURL* caches =
+        [files URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask].firstObject;
+    NSURL* folder = [caches URLByAppendingPathComponent:@"anira-models/coreml" isDirectory:YES];
+    NSURL* cached =
+        [folder URLByAppendingPathComponent:[NSString stringWithFormat:@"%s.mlmodelc",
+                                                                       content_key(package).c_str()]
+                                isDirectory:YES];
+    if (![files fileExistsAtPath:cached.path]) {
+        NSError* error = nil;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSURL* url = [MLModel compileModelAtURL:[NSURL fileURLWithPath:@(path.c_str())] error:&error];
+        NSURL* url = [MLModel compileModelAtURL:[NSURL fileURLWithPath:package] error:&error];
 #pragma clang diagnostic pop
-    if (url == nil) {
-        throw anira::Error(ANIRA_ERROR_MODEL_LOAD,
-                           "coreml engine: compiling " + path + ": " + text_of(error));
+        if (url == nil) {
+            throw anira::Error(ANIRA_ERROR_MODEL_LOAD,
+                               "coreml engine: compiling " + path + ": " + text_of(error));
+        }
+        [files createDirectoryAtURL:folder
+            withIntermediateDirectories:YES
+                             attributes:nil
+                                  error:nil];
+        // Another process may have put it there meanwhile: then its copy serves, ours goes.
+        if (![files moveItemAtURL:url toURL:cached error:nil]) {
+            [files removeItemAtURL:url error:nil];
+            if (![files fileExistsAtPath:cached.path]) {
+                throw anira::Error(ANIRA_ERROR_MODEL_LOAD,
+                                   "coreml engine: cannot keep the compiled model in " +
+                                       std::string(folder.path.UTF8String));
+            }
+        }
     }
-    done.emplace(path, url);
-    return url;
+    done.emplace(path, cached);
+    return cached;
 }
 
 // One MLModel: what one call at a time runs on.
