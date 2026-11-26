@@ -9,7 +9,7 @@
     {"path": "coreml/silero_vad_16k.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "dc870cde3bba69a8f99dfb3a34ba7a5a5864493b30ef307d3d7d08d4b5fa9458"},
     {"path": "executorch/silero_vad_16k.pte", "engine": "executorch", "size": 1256452, "sha256": "ea5aac11e1c8ba1e56675314fb74e593257cfd90646228a190b2a31ff05633c7"},
     {"path": "executorch/silero_vad_16k_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 1323745, "sha256": "a5f5df5e577c29b153a7a6e72c738ae49a95c6fc3d49d0305c4fa9ef897bbe99"},
-    {"path": "executorch/silero_vad_16k_vulkan.pte", "engine": "executorch", "provider": "vulkan", "size": 1255684, "sha256": "5fca4378fb2b957b11df7755f82e1a1851d791405dd2fb19ebd47230e84d3b44"},
+    {"path": "executorch/silero_vad_16k_vulkan.pte", "engine": "executorch", "provider": "vulkan", "model": "silero-vad.model.json", "size": 1255684, "sha256": "5fca4378fb2b957b11df7755f82e1a1851d791405dd2fb19ebd47230e84d3b44"},
     {"path": "libtorch/silero_vad_16k.pt", "engine": "libtorch", "size": 1249106, "sha256": "5bfd137a62181f889343995da9bdde47bde3306e795a50553bf3a0b0a961adc2"},
     {"path": "litert/silero_vad_16k.tflite", "engines": ["litert", "tflite"], "size": 1254896, "sha256": "dfb2e98438dede7718e33cb3a63863b333b82e486ba122ebb803551094d488e9"},
     {"path": "onnx/silero_vad_16k.onnx", "engine": "onnxruntime", "size": 1250207, "sha256": "165af836d0a0442bfe5d5d91c3e715a995d55ac21ecc1179a96301fe140e7e2c"}

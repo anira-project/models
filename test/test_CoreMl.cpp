@@ -9,9 +9,10 @@
 //   - Silero VAD's probabilities agree on the same audio;
 //   - every description for anira's Async contract with a Core ML entry (hand tracking, Moonshine,
 //     Parakeet, Nemotron diarization) runs the same jobs through core::AsyncHandler on both,
-//     several in a row so that a State is carried, and every output agrees. Against an ONNX file
-//     that is no exact reference (quantized; Parakeet's preprocessor from onnx-asr) the
-//     difference is printed, not checked.
+//     several in a row so that a State is carried, and every output agrees: within the Core ML
+//     tolerance, within quantization error against a quantized ONNX reference (q4, int8), and
+//     printed, not checked, against Parakeet's preprocessor from onnx-asr, which is no export of
+//     NeMo's.
 //
 // A Core ML export that loses state or reads its inputs wrongly diverges. Built with
 // ANIRA_MODELS_COREML_ENGINE on macOS; each needs ANIRA_MODELS_TEST_WEIGHTS/<its HF repository>
@@ -316,14 +317,18 @@ double deviation(const Outputs& reference, const Outputs& got) {
     return worst;
 }
 
-// Why an ONNX file is no exact reference for the Core ML export (null: it is one): a quantized
-// model (q4, int8), or Parakeet's preprocessor from onnx-asr (nemo128.onnx), which counts one mel
-// frame more than NeMo (len / 160 + 1) and differs at the edge frames; the Core ML export follows
-// NeMo (export/check.py).
-const char* not_a_reference(const std::string& onnx) {
-    if (onnx.find("q4") != std::string::npos || onnx.find("int8") != std::string::npos) {
-        return "quantized ONNX reference";
-    }
+// A quantized ONNX file (q4, int8) against the float Core ML export: quantization error, measured
+// up to 0.14 (tools/check_streaming.py's TOLERANCE_QUANTIZED).
+constexpr double k_tolerance_quantized = 0.2;
+
+bool is_quantized(const std::string& onnx) {
+    return onnx.find("q4") != std::string::npos || onnx.find("int8") != std::string::npos;
+}
+
+// Why an ONNX file is no export of the original model (null: it is one): Parakeet's preprocessor
+// from onnx-asr (nemo128.onnx) counts one mel frame more than NeMo (len / 160 + 1) and differs at
+// the edge frames; the Core ML export follows NeMo (export/check.py).
+const char* not_exact(const std::string& onnx) {
     if (onnx == "nemo128.onnx") { return "onnx-asr's preprocessor, one frame longer than NeMo's"; }
     return nullptr;
 }
@@ -522,12 +527,14 @@ TEST(CoreMl, EveryAsyncDescriptionAgreesWithOnnxRuntime) {
         const Outputs got = run_jobs(handler, *coreml, inputs, outputs, jobs);
         const auto end = std::chrono::steady_clock::now();
         const double worst = deviation(expected, got);
-        const char* unchecked = not_a_reference(onnx);
+        const char* unchecked = not_exact(onnx);
+        const double tolerance = is_quantized(onnx) ? k_tolerance_quantized : k_tolerance;
         std::printf(
-            "[ info ] %s: max |Core ML - ONNX Runtime| %.2e%s%s%s; %d jobs in %.0f ms on ONNX "
+            "[ info ] %s: max |Core ML - ONNX Runtime| %.2e%s%s%s%s; %d jobs in %.0f ms on ONNX "
             "Runtime, %.0f ms on Core ML\n",
             name.c_str(),
             worst,
+            is_quantized(onnx) ? " (quantized ONNX)" : "",
             unchecked != nullptr ? " (not checked: " : "",
             unchecked != nullptr ? unchecked : "",
             unchecked != nullptr ? ")" : "",
@@ -537,7 +544,7 @@ TEST(CoreMl, EveryAsyncDescriptionAgreesWithOnnxRuntime) {
         if (unchecked != nullptr) {
             EXPECT_TRUE(std::isfinite(worst)) << name;
         } else {
-            EXPECT_LT(worst, k_tolerance) << name;
+            EXPECT_LT(worst, tolerance) << name;
         }
         ++compared;
     }

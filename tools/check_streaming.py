@@ -42,12 +42,47 @@ from executorch.runtime import Runtime
 CALLS = 12
 TOLERANCE = 1e-3  # relative to the reference output's peak
 TOLERANCE_COREML = 2e-2  # Core ML programs, hand tracking's in float16
-REFERENCES = ("libtorch", "onnxruntime")
+# A quantized file (q4, int8) against a float one: quantization error, measured up to 0.14 (Parakeet's
+# q4 encoder and int8 decoder, the diarization's int8 model).
+TOLERANCE_QUANTIZED = 0.2
+# The reference: the first of these that is exact, a float export of the original model; LibTorch
+# where the description has it.
+REFERENCES = ("libtorch", "onnxruntime", "executorch", "coreml", "litert")
+# Files that are no exact export of the original model, and why: compared and printed, not checked.
+NOT_EXACT = {
+    "nemo128.onnx": "onnx-asr's preprocessor, one mel frame longer than NeMo's and other edge frames",
+}
 COREML_ENGINE_ID = "org.anira-project.models.coreml"  # core/include/anira/models/core/CoreMlEngine.h
 REQUIRED = ("onnxruntime", "litert", "tflite", "libtorch", "executorch", "executorch/coreml", "executorch/vulkan",
             "coreml")
-# Formats a model cannot have yet, and why: reported, not failed.
-KNOWN_GAPS = {}
+# Formats a model cannot have yet, and why: reported, not failed. The speech models come for
+# ONNX Runtime (and ExecuTorch and Core ML where exported) alone: accepted.
+_SPEECH = "no export of this speech model for it (accepted)"
+_VULKAN = "ExecuTorch on Vulkan not exported for the speech models (accepted)"
+
+
+def _speech_gaps(formats):
+    return {f: (_VULKAN if f == "executorch/vulkan" else _SPEECH) for f in formats}
+
+
+_NOT_EXPORTED = ("litert", "tflite", "libtorch", "executorch/vulkan")
+_ONNX_ONLY = _NOT_EXPORTED + ("executorch", "executorch/coreml", "coreml")
+KNOWN_GAPS = {
+    **{f"moonshine-{size}-{lang}-{part}.model.json": _speech_gaps(_NOT_EXPORTED)
+       for size in ("tiny", "small") for lang in ("en", "de") for part in ("encoder", "decoder")},
+    **{f"nemotron-asr-streaming-{part}.model.json": _speech_gaps(_ONNX_ONLY)
+       for part in ("encoder", "decoder", "joint")},
+    "nemotron-diarization.model.json": _speech_gaps(_NOT_EXPORTED),
+    "parakeet-decoder-joint.model.json": _speech_gaps(_NOT_EXPORTED),
+    # Core ML and ExecuTorch take the 31 s window alone: the shorter windows run on ONNX Runtime.
+    **{f"parakeet-{part}-{window}s.model.json": _speech_gaps(_ONNX_ONLY if window != 31 else _NOT_EXPORTED)
+       for part in ("encoder", "preprocessor") for window in (4, 8, 16, 31)},
+}
+
+
+def is_quantized(path):
+    name = os.path.basename(path)
+    return "q4" in name or "int8" in name
 
 
 def shape(tensor):
@@ -190,20 +225,22 @@ def check(path, weights_root):
     description = json.load(open(path))
     folder = os.path.dirname(path)
     name = os.path.basename(path)
-    repos = {}
+    repos, extras = {}, []
     for catalog_path in glob.glob(f"{folder}/*.catalog.json"):
         catalog = json.load(open(catalog_path))
         for f in catalog["files"]:
             repos[f["path"]] = catalog["repo"].split("/")[1]
             if ".mlpackage/" in f["path"]:  # a Core ML entry names the package, a directory
                 repos[f["path"][:f["path"].index(".mlpackage") + len(".mlpackage")]] = repos[f["path"]]
+            if f.get("model") == name:  # a format for this description not in it (ExecuTorch on Vulkan)
+                extras.append({"engine": f.get("engine"), "provider": f.get("provider"), "path": f["path"]})
     # core::coreml_engine()'s entries, until anira has a Core ML engine: "coreml" here.
     entries = [dict(e, engine="coreml", provider=None) if e["engine"] == COREML_ENGINE_ID else e
-               for e in description["models"]]
+               for e in description["models"]] + extras
     present = {e["engine"] + ("/" + e["provider"] if e.get("provider") else "") for e in entries}
     gaps = KNOWN_GAPS.get(name, {})
     missing = [r for r in REQUIRED if r not in present and r not in gaps] if not name.endswith("-libtorch.model.json") else []
-    formats, loaders = {}, {}
+    formats, loaders, paths = {}, {}, {}
     for entry in entries:
         engine = entry["engine"]
         if engine == "tflite" or engine not in ("onnxruntime", "litert", "executorch", "libtorch", "coreml") \
@@ -213,6 +250,7 @@ def check(path, weights_root):
         if not os.path.exists(weights):
             continue
         label = engine + ("/" + entry["provider"] if entry.get("provider") else "")
+        paths[label] = entry["path"]
         loaders[label] = lambda engine=engine, weights=weights, e=entry.get("entry"): Format(engine, weights, e, description)
         formats[label] = loaders[label]()
     if not formats:
@@ -223,7 +261,9 @@ def check(path, weights_root):
     length = next((shape(t)[-1] for t in description["inputs"]
                    if np.issubdtype(np.dtype(t.get("dtype", "float32")), np.floating)), 1)
     calls = [[input_values(rng, t, length) for t in description["inputs"]] for _ in range(CALLS)]
-    reference_label = next((r for r in REFERENCES if r in formats), next(iter(formats)))
+    exact = [r for r in REFERENCES if r in formats and not is_quantized(paths[r])
+             and os.path.basename(paths[r]) not in NOT_EXACT]
+    reference_label = exact[0] if exact else next((r for r in REFERENCES if r in formats), next(iter(formats)))
     reference_run = timed(formats[reference_label])
     reference = stream(reference_run, description, calls)
     lines, ok = [], not missing
@@ -244,13 +284,19 @@ def check(path, weights_root):
             lines.append(f"    {label:22} FAIL: {str(error).splitlines()[0][:120]}")
             continue
         first, later = worst[0], max(worst[1:])
-        tolerance = TOLERANCE_COREML if "coreml" in label else TOLERANCE
-        bad = max(worst) > tolerance
+        not_exact = NOT_EXACT.get(os.path.basename(paths[label])) or NOT_EXACT.get(os.path.basename(paths[reference_label]))
+        if is_quantized(paths[label]) or is_quantized(paths[reference_label]):
+            tolerance = TOLERANCE_QUANTIZED
+        else:
+            tolerance = TOLERANCE_COREML if "coreml" in label else TOLERANCE
+        bad = max(worst) > tolerance and not not_exact
         ok &= not bad
         lost = bad and first <= tolerance and description.get("state") == "stateful"
         lines.append(f"    {label:22} vs {reference_label}: call 1 {first:.1e}, calls 2..{CALLS} {later:.1e}, "
                      f"{1000 * np.median(run.times[1:]):.2f} ms per call"
-                     + ("  FAIL" if bad else "") + ("  (diverges after the first call: state lost)" if lost else ""))
+                     + ("  FAIL" if bad else "") + ("  (diverges after the first call: state lost)" if lost else "")
+                     + (f"  (not checked: {not_exact})" if not_exact else "")
+                     + ("  (quantized)" if is_quantized(paths[label]) else ""))
     has_pairs = any(t.get("state_source") for t in description["inputs"])
     if description.get("state") == "stateful" and not has_pairs:
         # State inside the model: a stream on one load against each call on a fresh load.

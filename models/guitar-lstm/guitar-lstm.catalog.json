@@ -9,7 +9,7 @@
     {"path": "coreml/GuitarLSTM.mlpackage/Manifest.json", "engine": "coreml", "size": 617, "sha256": "098a85bb58d3306ecbb2e0b9b16664ae3ccbd237d1b819bc3715c3b5cb0a50eb"},
     {"path": "executorch/GuitarLSTM-executorch.pte", "engine": "executorch", "size": 62724, "sha256": "f8172e5a88e93bce2149f296cbd07d1e21df7b395f0f88a022cfffb0bf200190"},
     {"path": "executorch/GuitarLSTM_coreml.pte", "engine": "executorch", "provider": "coreml", "size": 290570, "sha256": "1c37e6b986c3cfafe717fbc0f4cff72bbf79ab582e91728421f97c8d9cf098fa"},
-    {"path": "executorch/GuitarLSTM_vulkan.pte", "engine": "executorch", "provider": "vulkan", "size": 59268, "sha256": "96971ef5a9f02d3d10c0465914c2cb2fa6776aacba98d35bcbb178c28b394017"},
+    {"path": "executorch/GuitarLSTM_vulkan.pte", "engine": "executorch", "provider": "vulkan", "model": "guitar-lstm.model.json", "size": 59268, "sha256": "96971ef5a9f02d3d10c0465914c2cb2fa6776aacba98d35bcbb178c28b394017"},
     {"path": "libtorch/GuitarLSTM-dynamic.pt", "engine": "libtorch", "size": 60766, "sha256": "7fc4deca50fa192c8b99e8688788e96cc0336656337fa46529925a18bc704f7a"},
     {"path": "litert/GuitarLSTM.tflite", "engines": ["litert", "tflite"], "size": 205632, "sha256": "8950b4d51b64263cdf72a4ed1b637acf569dd57d9695c54c72692d84fca9d945"},
     {"path": "onnx/GuitarLSTM-libtorch-dynamic.onnx", "engine": "onnxruntime", "size": 50450, "sha256": "4789254a3bf75e0e012fbf248db431ecb71f57c7ccea10850ee85cf67bb6937f"}
