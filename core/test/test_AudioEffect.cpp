@@ -14,10 +14,6 @@
 #include <anira/models/core/ModelSource.h>
 #include <gtest/gtest.h>
 
-#ifdef __APPLE__
-#include <sys/sysctl.h>
-#endif
-
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <array>
@@ -193,16 +189,11 @@ TEST(AudioEffect, AtEveryHostRateTheOutputHasNoArtefacts) {
 
 namespace {
 
-// Whether this is macOS in a virtual machine (GitHub's macOS runners), whose sleep_until wakes
-// milliseconds late under load: a block per period cannot be kept there.
-bool in_a_virtual_mac() {
-#ifdef __APPLE__
-    int present = 0;
-    std::size_t size = sizeof(present);
-    return sysctlbyname("kern.hv_vmm_present", &present, &size, nullptr, 0) == 0 && present != 0;
-#else
-    return false;
-#endif
+// Waits until `deadline` by spinning (yielding), not sleeping: a sleep wakes up to a timer tick
+// late (15.6 ms on Windows by default, longer than a block at 24 kHz; milliseconds in a virtual
+// machine), while an audio device calls back on time.
+void wait_until(std::chrono::steady_clock::time_point deadline) {
+    while (std::chrono::steady_clock::now() < deadline) { std::this_thread::yield(); }
 }
 
 }  // namespace
@@ -211,9 +202,6 @@ bool in_a_virtual_mac() {
 // calls: no block is missed, and the output has no artefacts (a miss would fill a block with
 // what the miss policy gives, not the input through the model).
 TEST(AudioEffect, InRealTimeOnAClockNoBlockIsMissedAndTheOutputHasNoArtefacts) {
-    if (in_a_virtual_mac()) {
-        GTEST_SKIP() << "a virtual Mac (CI) wakes late from sleep_until: no clock to keep";
-    }
     anira::Context context{anira::ContextConfig{}};
     for (const double rate : {24000.0, 48000.0, 96000.0}) {
         constexpr std::size_t k_block = 256;
@@ -231,7 +219,7 @@ TEST(AudioEffect, InRealTimeOnAClockNoBlockIsMissedAndTheOutputHasNoArtefacts) {
             ASSERT_FALSE(ANIRA_FAILED(status)) << rate;
             if (status == ANIRA_MISSED) { ++missed; }
             next += period;
-            std::this_thread::sleep_until(next);
+            wait_until(next);
         }
         EXPECT_EQ(missed, 0U) << rate << " Hz";
         audio.resize(audio.size() / k_block * k_block);
