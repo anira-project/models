@@ -42,6 +42,16 @@ target_compile_definitions(anira-models-tests
 target_link_libraries(anira-models-tests
     PRIVATE anira::models::core models_test_gain_models models_test_gain_descriptions
             anira::anira nlohmann_json::nlohmann_json gtest_main)
+# Windows looks for a program's DLLs next to it (and in System32, which has an onnxruntime.dll of
+# its own): anira's, tanh-lib's and the engines' go there before the tests are discovered.
+if(TANH_OPERATING_SYSTEM STREQUAL "Windows")
+    add_custom_command(TARGET anira-models-tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            "-DDLLS=$<TARGET_RUNTIME_DLLS:anira-models-tests>"
+            "-DDEST=$<TARGET_FILE_DIR:anira-models-tests>"
+            -P "${PROJECT_SOURCE_DIR}/cmake/copy-runtime-dlls.cmake"
+        VERBATIM)
+endif()
 
 if(TARGET anira::models::handtracking)
     target_sources(anira-models-tests PRIVATE
