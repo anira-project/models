@@ -39,14 +39,18 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iterator>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <numbers>
 #include <optional>
 #include <random>
+#include <ratio>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #ifdef ANIRA_MODELS_HAS_SILERO_VAD
@@ -119,7 +123,10 @@ std::vector<float> run_timed(core::AudioEffect& effect,
 void compare(core::AudioEffect& effect, const char* name) {
     const anira::PlanReport report = effect.prepare(k_rate, 512);
     const auto reference = report.find({.backend = {.engine = ANIRA_ENGINE_ONNXRUNTIME}});
-    ASSERT_TRUE(reference) << name << ": no ONNX Runtime plan";
+    if (!reference) {
+        FAIL() << name << ": no ONNX Runtime plan";
+        return;
+    }
     const std::vector<float> input = plucks();
     effect.set_plan(*reference);
     double onnx_ms = 0.0;
@@ -131,7 +138,10 @@ void compare(core::AudioEffect& effect, const char* name) {
         const auto plan = report.find({.backend = {.engine = ANIRA_ENGINE_CUSTOM,
                                                    .provider = ANIRA_PROVIDER_COREML,
                                                    .engine_id = core::k_coreml_engine_id}});
-        ASSERT_TRUE(plan) << name << ": no Core ML plan";
+        if (!plan) {
+            FAIL() << name << ": no Core ML plan";
+            return;
+        }
         effect.set_plan(*plan);
         double coreml_ms = 0.0;
         const std::vector<float> got = run_timed(effect, input, coreml_ms);
@@ -475,7 +485,7 @@ TEST(CoreMl, EveryAsyncDescriptionAgreesWithOnnxRuntime) {
             }
         }
     }
-    std::sort(descriptions.begin(), descriptions.end());
+    std::ranges::sort(descriptions);
 
     int compared = 0;
     for (const fs::path& path : descriptions) {
@@ -509,8 +519,10 @@ TEST(CoreMl, EveryAsyncDescriptionAgreesWithOnnxRuntime) {
         const auto coreml = report.find({.backend = {.engine = ANIRA_ENGINE_CUSTOM,
                                                      .provider = ANIRA_PROVIDER_COREML,
                                                      .engine_id = core::k_coreml_engine_id}});
-        ASSERT_TRUE(reference) << name << ": no ONNX Runtime plan";
-        ASSERT_TRUE(coreml) << name << ": no Core ML plan";
+        if (!reference || !coreml) {
+            FAIL() << name << ": no ONNX Runtime or no Core ML plan";
+            return;
+        }
 
         std::vector<Slot> inputs = slots_of(description.at("inputs"));
         std::vector<Slot> outputs = slots_of(description.at("outputs"));
@@ -519,6 +531,7 @@ TEST(CoreMl, EveryAsyncDescriptionAgreesWithOnnxRuntime) {
         }
         std::mt19937 random(0);
         std::vector<std::vector<std::vector<std::byte>>> jobs;
+        jobs.reserve(k_jobs);
         for (int k = 0; k < k_jobs; ++k) { jobs.push_back(job_inputs(inputs, random)); }
 
         const auto start = std::chrono::steady_clock::now();

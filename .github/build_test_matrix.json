@@ -21,7 +21,7 @@
  {
   "name": "Windows-x86_64",
   "os": "windows-2025",
-  "preset": "release",
+  "preset": "windows-release",
   "pr": true,
   "vcvars": "x64"
  }

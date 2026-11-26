@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <anira/anira.hpp>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -18,6 +19,7 @@
 #include <map>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <random>
 #include <string>
 #include <string_view>
@@ -75,9 +77,9 @@ std::filesystem::path written_package(const ModelSource& weights, const std::str
     const auto key = std::make_pair(package, files.front()->m_bytes.data());
     if (const auto found = written.find(key); found != written.end()) { return found->second; }
     // A directory per process (a random name) and package: processes never share one.
-    static const std::string process = std::to_string(std::random_device{}());
+    static const std::string k_process = std::to_string(std::random_device{}());
     const std::filesystem::path dir = std::filesystem::temp_directory_path() / "anira-models" /
-                                      process / std::to_string(written.size()) / package;
+                                      k_process / std::to_string(written.size()) / package;
     std::filesystem::remove_all(dir);
     for (const ModelSource::File* file : files) {
         const std::filesystem::path path = dir / file->m_path.substr(prefix.size());
