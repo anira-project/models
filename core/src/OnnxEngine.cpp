@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <mutex>
 #include <span>
 #include <string>
@@ -71,7 +72,7 @@ std::shared_ptr<Ort::Env> shared_env() {
 struct Source {
     std::shared_ptr<Ort::Env> m_env;
     Ort::SessionOptions m_options;
-    std::string m_path;              // a path entry
+    std::filesystem::path m_path;    // a path entry (ONNX Runtime takes wide paths on Windows)
     std::vector<std::byte> m_bytes;  // a bytes entry, copied (the record's die with load)
     std::vector<std::string> m_input_names;
     std::vector<std::string> m_output_names;
@@ -222,7 +223,7 @@ public:
         source->m_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
         const auto bytes = info.model_bytes(info.row());
         if (bytes.empty()) {
-            source->m_path = std::string(info.model_path(info.row()));
+            source->m_path = std::filesystem::path(info.model_path(info.row()));
         } else {
             source->m_bytes.assign(bytes.begin(), bytes.end());
         }

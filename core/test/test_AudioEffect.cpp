@@ -191,9 +191,11 @@ TEST(AudioEffect, AtEveryHostRateTheOutputHasNoArtefacts) {
     }
 }
 
+namespace {
+
 // Whether this is macOS in a virtual machine (GitHub's macOS runners), whose sleep_until wakes
 // milliseconds late under load: a block per period cannot be kept there.
-static bool in_a_virtual_mac() {
+bool in_a_virtual_mac() {
 #ifdef __APPLE__
     int present = 0;
     std::size_t size = sizeof(present);
@@ -202,6 +204,8 @@ static bool in_a_virtual_mac() {
     return false;
 #endif
 }
+
+}  // namespace
 
 // In real time (process(), which never waits) on a clock, a block per period as an audio device
 // calls: no block is missed, and the output has no artefacts (a miss would fill a block with
