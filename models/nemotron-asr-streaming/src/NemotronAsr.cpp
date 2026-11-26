@@ -94,10 +94,10 @@ void wait(core::Ticket& job, const char* what) {
 }  // namespace
 
 std::optional<std::int64_t> language_id(std::string_view language) noexcept {
-    const auto* found =
-        std::ranges::find(k_languages, language, &std::pair<std::string_view, std::int64_t>::first);
-    if (found == k_languages.end()) { return std::nullopt; }
-    return found->second;
+    for (const auto& [name, id] : k_languages) {
+        if (name == language) { return id; }
+    }
+    return std::nullopt;
 }
 
 NemotronAsr::NemotronAsr(anira::Context& context,
