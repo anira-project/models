@@ -1,0 +1,46 @@
+name: lint
+
+# clang-format over the sources, and the tanh-tooling config drift check (the installed .clang-*
+# and cmake/tanh/ copies against the pinned tanh-tooling release), as anira and tanh-lib.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: lint-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tanh-lab/ci-actions/setup-cpp-build-tools@v0.3.18
+      - uses: tanh-lab/ci-actions/clang-format-check@v0.3.18
+        with:
+          SOURCES: "core/ models/ test/ test-models/"
+
+  tooling-config:
+    uses: tanh-lab/tanh-tooling/.github/workflows/config-check.yml@v0.3.0
+    with:
+      ref: v0.3.0
+      family: "clang cmake"
+
+  result:
+    name: lint result
+    needs: [format, tooling-config]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: aggregate
+        run: |
+          echo "clang-format: ${{ needs.format.result }}, tooling config: ${{ needs.tooling-config.result }}"
+          [ "${{ needs.format.result }}" = "success" ] || exit 1
+          [ "${{ needs.tooling-config.result }}" = "success" ] || exit 1

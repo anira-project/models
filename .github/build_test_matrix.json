@@ -1,0 +1,28 @@
+[
+ {
+  "name": "Linux-x86_64",
+  "os": "ubuntu-24.04",
+  "preset": "release",
+  "pr": true
+ },
+ {
+  "name": "Linux-arm64",
+  "os": "ubuntu-24.04-arm",
+  "preset": "release",
+  "pr": false
+ },
+ {
+  "name": "macOS-arm64",
+  "os": "macos-15",
+  "preset": "release",
+  "pr": true,
+  "args": "-DANIRA_MODELS_COREML_ENGINE=ON"
+ },
+ {
+  "name": "Windows-x86_64",
+  "os": "windows-2025",
+  "preset": "release",
+  "pr": true,
+  "vcvars": "x64"
+ }
+]
