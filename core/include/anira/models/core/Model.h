@@ -17,8 +17,9 @@ namespace anira::models::core {
 /// against the description when the handler is prepared (data types, ranks, extents) and names the
 /// tensor that does not match. Throws Error for missing weights or a description anira refuses.
 ///
-/// Entries for core::coreml_engine() stay only where this build has it and the weights are a
-/// directory (a .mlpackage is one); elsewhere they are dropped.
+/// Entries for core::coreml_engine() stay only where this build has it; from a bytes source, whose
+/// package files the engine cannot open by path, each package is written to a directory under the
+/// temporary directory first (once per process).
 anira::ModelConfig load_model(std::string_view model_json, const ModelSource& weights);
 
 /// A pipeline running `model`, with the models' custom engines of this build registered

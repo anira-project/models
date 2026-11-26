@@ -382,6 +382,31 @@ TEST(CoreMl, StatefulLstm) {
 }
 #endif
 
+#ifdef ANIRA_MODELS_HAS_STATEFUL_LSTM
+// Compiled-in weights (a bytes source, as the examples embed the small effects): load_model writes
+// the package to disk for the engine, and the Core ML plan agrees as from a directory.
+TEST(CoreMl, StatefulLstmFromBytes) {
+    const auto dir = weights_dir("stateful-lstm", "coreml/stateful_lstm.mlpackage");
+    if (!dir) { GTEST_SKIP() << "ANIRA_MODELS_TEST_WEIGHTS/stateful-lstm is missing"; }
+    std::vector<std::string> contents;  // the bytes the source borrows
+    std::vector<core::ModelSource::File> files;
+    for (const auto& entry : fs::recursive_directory_iterator(*dir)) {
+        if (!entry.is_regular_file()) { continue; }
+        contents.push_back(read_text(entry.path()));
+    }
+    std::size_t i = 0;
+    for (const auto& entry : fs::recursive_directory_iterator(*dir)) {
+        if (!entry.is_regular_file()) { continue; }
+        files.push_back({.m_path = fs::relative(entry.path(), *dir).generic_string(),
+                         .m_bytes = std::as_bytes(std::span(contents[i++]))});
+    }
+    anira::Context context{anira::ContextConfig{}};
+    anira::models::stateful_lstm::StatefulLstm effect(context,
+                                                      core::ModelSource::bytes(std::move(files)));
+    compare(effect, "Stateful LSTM from bytes");
+}
+#endif
+
 #ifdef ANIRA_MODELS_HAS_STEERABLE_NAFX
 TEST(CoreMl, SteerableNafxInEverySize) {
     const auto dir = weights_dir("steerable-nafx", "coreml/steerable-nafx.mlpackage");

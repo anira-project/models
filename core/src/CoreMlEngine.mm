@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <span>
@@ -87,20 +88,32 @@ NSArray<NSNumber*>* shape_of(const anira::Tensor& tensor) {
 
 // What every instance of one loaded model reads: the compiled model and the binding.
 struct Source {
-    NSURL* m_compiled = nil;  // the .mlmodelc Core ML compiled the package into, removed with us
+    NSURL* m_compiled = nil;  // the .mlmodelc of the package (compiled(), kept for the process)
     MLComputeUnits m_units = MLComputeUnitsAll;
     std::vector<std::string> m_input_names;
     std::vector<std::string> m_output_names;
-
-    Source() = default;
-    Source(const Source&) = delete;
-    Source& operator=(const Source&) = delete;
-    ~Source() {
-        if (m_compiled != nil) {
-            [[NSFileManager defaultManager] removeItemAtURL:m_compiled error:nil];
-        }
-    }
 };
+
+// The package at `path` compiled (.mlmodelc), once per process: anira loads a model again at every
+// prepare (a plugin's every activate), and compiling a large package takes seconds. The compiled
+// models stay in the temporary directory, for the system to clear.
+NSURL* compiled(const std::string& path) {
+    static std::mutex mutex;
+    static std::map<std::string, NSURL*> done;
+    const std::scoped_lock lock(mutex);
+    if (const auto found = done.find(path); found != done.end()) { return found->second; }
+    NSError* error = nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    NSURL* url = [MLModel compileModelAtURL:[NSURL fileURLWithPath:@(path.c_str())] error:&error];
+#pragma clang diagnostic pop
+    if (url == nil) {
+        throw anira::Error(ANIRA_ERROR_MODEL_LOAD,
+                           "coreml engine: compiling " + path + ": " + text_of(error));
+    }
+    done.emplace(path, url);
+    return url;
+}
 
 // One MLModel: what one call at a time runs on.
 class Session {
@@ -321,16 +334,7 @@ public:
         for (const char* name : info.input_names()) { source->m_input_names.emplace_back(name); }
         for (const char* name : info.output_names()) { source->m_output_names.emplace_back(name); }
         @autoreleasepool {
-            NSError* error = nil;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            source->m_compiled = [MLModel compileModelAtURL:[NSURL fileURLWithPath:@(path.c_str())]
-                                                      error:&error];
-#pragma clang diagnostic pop
-            if (source->m_compiled == nil) {
-                throw anira::Error(ANIRA_ERROR_MODEL_LOAD,
-                                   "coreml engine: compiling " + path + ": " + text_of(error));
-            }
+            source->m_compiled = compiled(path);
             return std::make_unique<SharedModel>(std::move(source), info.instances());
         }
     }

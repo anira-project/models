@@ -12,9 +12,16 @@
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <ios>
+#include <map>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <random>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace anira::models::core {
@@ -51,8 +58,42 @@ void attach_bytes(anira::ModelConfig& config, const ModelSource& weights) {
     }
 }
 
-// The description without the entries of core::coreml_engine() where it cannot run them: a build
-// without it, or weights that are bytes (a .mlpackage is a directory).
+// A bytes source's Core ML package (the files under `package`/) written into a directory of
+// their own under the temporary directory, once per process and package: core::coreml_engine()
+// opens a package by path. Left there for the system to clear (packages of compiled-in weights
+// are small). Empty when the source has none of its files.
+std::filesystem::path written_package(const ModelSource& weights, const std::string& package) {
+    static std::mutex mutex;
+    static std::map<std::pair<std::string, const std::byte*>, std::filesystem::path> written;
+    const std::string prefix = package + "/";
+    std::vector<const ModelSource::File*> files;
+    for (const ModelSource::File& file : weights.files()) {
+        if (file.m_path.starts_with(prefix)) { files.push_back(&file); }
+    }
+    if (files.empty()) { return {}; }
+    const std::scoped_lock lock(mutex);
+    const auto key = std::make_pair(package, files.front()->m_bytes.data());
+    if (const auto found = written.find(key); found != written.end()) { return found->second; }
+    // A directory per process (a random name) and package: processes never share one.
+    static const std::string process = std::to_string(std::random_device{}());
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "anira-models" /
+                                      process / std::to_string(written.size()) / package;
+    std::filesystem::remove_all(dir);
+    for (const ModelSource::File* file : files) {
+        const std::filesystem::path path = dir / file->m_path.substr(prefix.size());
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream out(path, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(file->m_bytes.data()),
+                  static_cast<std::streamsize>(file->m_bytes.size()));
+        if (!out) { throw Error("could not write the Core ML package to " + dir.string()); }
+    }
+    written.emplace(key, dir);
+    return dir;
+}
+
+// The description as this build runs it: core::coreml_engine()'s entries dropped without the
+// engine; from a bytes source, pointed at the package written to disk (written_package), or
+// dropped when the source has none of its files.
 std::string runnable(std::string_view model_json, const ModelSource& weights) {
     if (model_json.find(k_coreml_engine_id) == std::string_view::npos ||
         (coreml_engine() != nullptr && weights.is_directory())) {
@@ -61,7 +102,20 @@ std::string runnable(std::string_view model_json, const ModelSource& weights) {
     auto description = nlohmann::json::parse(model_json);
     auto& models = description.at("models");
     for (auto entry = models.begin(); entry != models.end();) {
-        entry = entry->value("engine", "") == k_coreml_engine_id ? models.erase(entry) : entry + 1;
+        if (entry->value("engine", "") != k_coreml_engine_id) {
+            ++entry;
+            continue;
+        }
+        const std::filesystem::path dir =
+            coreml_engine() != nullptr
+                ? written_package(weights, entry->at("path").get<std::string>())
+                : std::filesystem::path();
+        if (dir.empty()) {
+            entry = models.erase(entry);
+        } else {
+            (*entry)["path"] = dir.string();
+            ++entry;
+        }
     }
     return description.dump();
 }

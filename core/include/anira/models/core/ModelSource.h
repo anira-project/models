@@ -38,6 +38,8 @@ public:
     std::string read_text(std::string_view path) const;
     // A bytes source's file; std::nullopt when it has none of that name (and for a directory).
     std::optional<std::span<const std::byte>> find_bytes(std::string_view path) const;
+    // A bytes source's files (none for a directory).
+    std::span<const File> files() const noexcept { return m_files; }
 
 private:
     ModelSource() = default;
