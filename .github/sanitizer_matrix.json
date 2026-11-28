@@ -1,0 +1,14 @@
+[
+ {
+  "name": "ASan-UBSan",
+  "preset": "debug-asan"
+ },
+ {
+  "name": "TSan",
+  "preset": "debug-tsan"
+ },
+ {
+  "name": "RTSan",
+  "preset": "debug-rtsan"
+ }
+]

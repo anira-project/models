@@ -50,6 +50,27 @@
       }
     },
     {
+      "name": "debug-asan",
+      "displayName": "Debug with AddressSanitizer and UndefinedBehaviorSanitizer",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/desktop/debug-asan",
+      "cacheVariables": { "ANIRA_MODELS_WITH_ASAN": "ON" }
+    },
+    {
+      "name": "debug-tsan",
+      "displayName": "Debug with ThreadSanitizer",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/desktop/debug-tsan",
+      "cacheVariables": { "ANIRA_MODELS_WITH_TSAN": "ON" }
+    },
+    {
+      "name": "debug-rtsan",
+      "displayName": "Debug with RealtimeSanitizer (clang 20)",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/desktop/debug-rtsan",
+      "cacheVariables": { "ANIRA_MODELS_WITH_RTSAN": "ON" }
+    },
+    {
       "name": "windows-release",
       "displayName": "Release on Windows with MSVC (ONNX Runtime + LiteRT)",
       "inherits": "release",
@@ -64,12 +85,18 @@
     { "name": "debug", "configurePreset": "debug" },
     { "name": "release", "configurePreset": "release" },
     { "name": "all-backends", "configurePreset": "all-backends" },
+    { "name": "debug-asan", "configurePreset": "debug-asan" },
+    { "name": "debug-tsan", "configurePreset": "debug-tsan" },
+    { "name": "debug-rtsan", "configurePreset": "debug-rtsan" },
     { "name": "windows-release", "configurePreset": "windows-release" }
   ],
   "testPresets": [
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
     { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
     { "name": "all-backends", "configurePreset": "all-backends", "output": { "outputOnFailure": true } },
+    { "name": "debug-asan", "configurePreset": "debug-asan", "output": { "outputOnFailure": true } },
+    { "name": "debug-tsan", "configurePreset": "debug-tsan", "output": { "outputOnFailure": true } },
+    { "name": "debug-rtsan", "configurePreset": "debug-rtsan", "output": { "outputOnFailure": true } },
     { "name": "windows-release", "configurePreset": "windows-release", "output": { "outputOnFailure": true } }
   ]
 }

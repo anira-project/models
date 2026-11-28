@@ -1,0 +1,36 @@
+name: sanitizers
+
+# The tests under AddressSanitizer with UndefinedBehaviorSanitizer, ThreadSanitizer and
+# RealtimeSanitizer (.github/sanitizer_matrix.json), on Linux: tanh-lab/ci-actions' reusable
+# build-sanitizer workflow, as anira and tanh-lib. The models' code, anira and tanh-lib are
+# instrumented; the engines' prebuilt libraries are not.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: sanitizers-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanitize:
+    uses: tanh-lab/ci-actions/.github/workflows/build-sanitizer.yml@v0.3.18
+    with:
+      matrix_file: .github/sanitizer_matrix.json
+
+  result:
+    name: sanitizer result
+    needs: sanitize
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: aggregate
+        run: |
+          echo "workflow result: ${{ needs.sanitize.result }}"
+          [ "${{ needs.sanitize.result }}" = "success" ] || exit 1

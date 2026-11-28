@@ -36,6 +36,26 @@ option(ANIRA_MODELS_WITH_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})
 # Temporary, until anira has a Core ML engine: core::coreml_engine() runs the Core ML exports
 # (.mlpackage) on macOS and iOS, and the weights fetch takes the "coreml" files.
 option(ANIRA_MODELS_COREML_ENGINE "Build core::coreml_engine() (macOS, iOS)" OFF)
+# Sanitizers (the CI's sanitizers workflow), one per build: on the models' code and, through their
+# own options, on anira and tanh-lib, as their CI instruments them (ThreadSanitizer reports races
+# through uninstrumented code).
+option(ANIRA_MODELS_WITH_ASAN "AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(ANIRA_MODELS_WITH_TSAN "ThreadSanitizer" OFF)
+option(ANIRA_MODELS_WITH_RTSAN "RealtimeSanitizer (clang 20)" OFF)
+if(ANIRA_MODELS_WITH_ASAN)
+    set(ANIRA_WITH_ASAN ON)
+    set(ANIRA_WITH_UBSAN ON)
+    set(TANH_WITH_ASAN ON)
+    set(TANH_WITH_USAN ON)
+endif()
+if(ANIRA_MODELS_WITH_TSAN)
+    set(ANIRA_WITH_TSAN ON)
+    set(TANH_WITH_TSAN ON)
+endif()
+if(ANIRA_MODELS_WITH_RTSAN)
+    set(ANIRA_WITH_RTSAN ON)
+    set(TANH_WITH_RTSAN ON)
+endif()
 option(ANIRA_MODELS_LINK_COMPILE_COMMANDS
        "Link build/compile_commands.json, which clangd reads, to this tree's (top-level builds only)" OFF)
 
