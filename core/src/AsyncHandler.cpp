@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <map>
@@ -84,6 +85,20 @@ std::int64_t to_streamed(nlohmann::json& tensor) {
     tensor["role"] = "streamed";
     tensor["window"] = {{"min", window}, {"max", window}};
     return window;
+}
+
+// The size of one element.
+std::size_t bytes_of(anira_dtype dtype) noexcept {
+    switch (dtype) {
+        case ANIRA_DTYPE_F64:
+        case ANIRA_DTYPE_I64: return 8;
+        case ANIRA_DTYPE_F32:
+        case ANIRA_DTYPE_I32: return 4;
+        case ANIRA_DTYPE_F16:
+        case ANIRA_DTYPE_BF16:
+        case ANIRA_DTYPE_I16: return 2;
+        default: return 1;
+    }
 }
 
 std::byte* host_data(const anira::Tensor& tensor) noexcept {
@@ -438,6 +453,21 @@ void AsyncHandler::execute(anira::InferenceHandler& handler, Job& job) noexcept 
         } else if (spec.m_role == Role::Static && m_bound[i].ndim > 0) {
             handler.get_static_output(out_slot, m_bound[i]);
         }
+    }
+    // Under on_late drop a job done past its deadline is dropped even when its result came in time
+    // to be popped (a deadline already past at submit, a fast model): zeros, as for a miss.
+    if (!missed && job.m_error == ANIRA_OK && job.m_deadline &&
+        m_contract.on_late == ANIRA_LATE_DROP &&
+        std::chrono::steady_clock::now() > *job.m_deadline) {
+        for (std::size_t i = 0; i < m_outputs.size(); ++i) {
+            if (m_outputs[i].m_role != Role::Streamed) { continue; }
+            const anira::Tensor out =
+                flat(host_data(m_bound[i]), m_outputs[i].m_dtype, m_outputs[i].m_window);
+            std::memset(host_data(m_bound[i]),
+                        0,
+                        anira_tensor_num_elements(&out) * bytes_of(m_outputs[i].m_dtype));
+        }
+        missed = true;
     }
     TicketStatus result = TicketStatus::Met;
     if (job.m_error != ANIRA_OK) {

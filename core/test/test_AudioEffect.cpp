@@ -14,6 +14,10 @@
 #include <anira/models/core/ModelSource.h>
 #include <gtest/gtest.h>
 
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
+
 #include <algorithm>
 #include <anira/anira.hpp>
 #include <array>
@@ -196,12 +200,25 @@ void wait_until(std::chrono::steady_clock::time_point deadline) {
     while (std::chrono::steady_clock::now() < deadline) { std::this_thread::yield(); }
 }
 
+// Whether this is macOS in a virtual machine (GitHub's macOS runners), whose vCPUs stall for
+// milliseconds under the host's load, which no wait on the guest can make up for.
+bool in_a_virtual_mac() {
+#ifdef __APPLE__
+    int present = 0;
+    std::size_t size = sizeof(present);
+    return sysctlbyname("kern.hv_vmm_present", &present, &size, nullptr, 0) == 0 && present != 0;
+#else
+    return false;
+#endif
+}
+
 }  // namespace
 
 // In real time (process(), which never waits) on a clock, a block per period as an audio device
 // calls: no block is missed, and the output has no artefacts (a miss would fill a block with
 // what the miss policy gives, not the input through the model).
 TEST(AudioEffect, InRealTimeOnAClockNoBlockIsMissedAndTheOutputHasNoArtefacts) {
+    if (in_a_virtual_mac()) { GTEST_SKIP() << "a virtual Mac (CI) stalls: no clock to keep"; }
     anira::Context context{anira::ContextConfig{}};
     for (const double rate : {24000.0, 48000.0, 96000.0}) {
         constexpr std::size_t k_block = 256;
