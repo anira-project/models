@@ -77,7 +77,10 @@ TEST(Descriptions, EveryModelLoadsAndItsWeightsAreCatalogued) {
         const auto description = nlohmann::json::parse(text);
         for (const auto& entry : description.at("models")) {
             const auto weight = entry.at("path").get<std::string>();
-            EXPECT_TRUE(listed.contains(weight))
+            // A file, or a folder whose files are listed (a Core ML .mlpackage).
+            const auto inside = listed.lower_bound(weight + "/");
+            const bool folder = inside != listed.end() && inside->starts_with(weight + "/");
+            EXPECT_TRUE(listed.contains(weight) || folder)
                 << path << " names " << weight << ", which no catalog in its folder lists";
         }
     }
