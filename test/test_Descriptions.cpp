@@ -73,7 +73,9 @@ TEST(Descriptions, EveryModelLoadsAndItsWeightsAreCatalogued) {
         // No weights are opened before prepare: any directory serves as their root.
         EXPECT_NO_THROW((void)core::load_model(text, core::ModelSource::directory("."))) << path;
         const std::set<std::string> listed = catalogued(path.parent_path());
-        for (const auto& entry : nlohmann::json::parse(text).at("models")) {
+        // Kept: a range-for over parse(text).at(...) would iterate a destroyed temporary.
+        const auto description = nlohmann::json::parse(text);
+        for (const auto& entry : description.at("models")) {
             const auto weight = entry.at("path").get<std::string>();
             EXPECT_TRUE(listed.contains(weight))
                 << path << " names " << weight << ", which no catalog in its folder lists";
